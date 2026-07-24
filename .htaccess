@@ -24,15 +24,37 @@ Options -Indexes
     # Peticiones que ya vienen apuntando a public/ se dejan pasar.
     RewriteRule ^public/ - [L]
 
-    # Recursos publicados: build/ (Vite), storage/ (enlace simbolico) y
-    # cualquier archivo con extension estatica conocida.
-    RewriteRule ^((?:build|storage)/.*)$ public/$1 [L]
-    RewriteRule ^(.+\.(?:css|js|mjs|map|json|txt|xml|ico|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|eot|pdf|mp4|webm))$ public/$1 [L]
+    # Solo se manda a public/ lo que existe ahi de verdad.
+    #
+    # Enrutar por extension no sirve: Livewire publica su JavaScript desde una
+    # ruta de Laravel, no como archivo en disco, y una regla que capture todo
+    # lo terminado en .js lo dejaria en 404 con el panel entero sin funcionar.
+    # La comprobacion tampoco puede hacerse con una ruta relativa, porque
+    # RewriteCond exige una ruta absoluta del sistema de archivos; por eso se
+    # construye a partir de DOCUMENT_ROOT en lugar de escribir el nombre de la
+    # carpeta del proyecto.
+
+    # Todas las reglas terminan en [END] y no en [L]. Apache reevalua el
+    # .htaccess despues de cada reescritura, y en esa segunda pasada
+    # REQUEST_URI ya apunta a index.php: la regla de recursos estaticos
+    # encontraria public/index.php en disco y desviaria ahi la peticion, con lo
+    # que SCRIPT_NAME volveria a incluir "/public" y Laravel responderia 404 en
+    # todas las rutas. [END] cierra el proceso y evita esa segunda pasada.
+
+    # La aplicacion cuelga de una subcarpeta del document root
+    # (por ejemplo http://localhost/chuta).
+    RewriteCond %{REQUEST_URI} ^/([^/]+)/(.+)$
+    RewriteCond %{DOCUMENT_ROOT}/%1/public/%2 -f
+    RewriteRule ^(.+)$ public/$1 [END]
+
+    # El document root es la raiz del proyecto.
+    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f
+    RewriteRule ^(.+)$ public/$1 [END]
 
     # Todo lo demas lo resuelve Laravel a traves del front controller de la
     # raiz. No se reenvia a public/index.php a proposito: ahi SCRIPT_NAME
     # incluiria "/public" y Laravel calcularia mal la ruta base.
-    RewriteRule ^ index.php [L]
+    RewriteRule ^ index.php [END]
 </IfModule>
 
 # Defensa en profundidad: aunque el reenvio anterior evita que estas rutas se

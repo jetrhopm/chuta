@@ -79,6 +79,20 @@ Ese `index.php` de raiz existe por una razon concreta: reenviar directamente a
 responde 404 en todas las rutas. Con el front controller en la raiz, las rutas,
 los assets y las URLs firmadas se resuelven igual que en produccion.
 
+Dos detalles del `.htaccess` de la raiz que conviene no deshacer:
+
+- **Las reglas terminan en `[END]`, no en `[L]`.** Apache reevalua el
+  `.htaccess` despues de cada reescritura, y en esa segunda pasada
+  `REQUEST_URI` ya apunta a `index.php`. La regla de recursos estaticos
+  encontraria entonces `public/index.php` en disco y desviaria la peticion ahi,
+  reintroduciendo justo el problema de la ruta base. `[END]` cierra el proceso.
+- **Los recursos estaticos se deciden comprobando si el archivo existe, no por
+  su extension.** Livewire publica su JavaScript desde una ruta de Laravel y no
+  como archivo en disco, asi que una regla que capture todo lo terminado en
+  `.js` deja `livewire.js` en 404 y el panel entero sin funcionar. La ruta
+  absoluta para esa comprobacion se construye a partir de `DOCUMENT_ROOT`, sin
+  escribir el nombre de la carpeta del proyecto.
+
 El proyecto no lleva dominios ni rutas de carpeta escritos en el codigo: todo
 sale de `APP_URL` y de los helpers `route()`, `url()`, `asset()` y
 `Storage::url()`.
@@ -121,7 +135,11 @@ entorno local. En produccion debe exigirse el cambio de contraseña.
 - [x] Etapa 1 — Base del proyecto: Laravel 12, Filament 5, Tailwind 4, Alpine,
       Swiper, SweetAlert2, Spatie Permission, Sanctum, Pest, Pint, entorno,
       base de datos, servido en subcarpeta e integracion continua.
-- [ ] Etapa 2 — Identidad, acceso, roles y permisos.
+- [x] Etapa 2 — Identidad, acceso, roles y permisos: catalogo de permisos
+      agrupados, roles sembrados de forma idempotente, superadministrador con
+      acceso total, cuentas desactivables, correo normalizado, recuperacion de
+      contrasena, limite de intentos, registro de ultimo acceso y cambio
+      obligatorio de la contrasena inicial en produccion.
 - [ ] Etapa 3 — Catalogo.
 - [ ] Etapa 4 — Inventario y reservas.
 - [ ] Etapa 5 — Temas, contenido y escaparate.
