@@ -24,6 +24,16 @@ class CatalogSeeder extends Seeder
     /**
      * @var list<string>
      */
+    private array $sampleCategorySlugs = [
+        'proteinas',
+        'pre-entrenos',
+        'creatinas',
+        'vitaminas',
+    ];
+
+    /**
+     * @var list<string>
+     */
     private array $featuredCategorySlugs = [
         'proteina',
         'proteina-isolatada',
@@ -45,6 +55,10 @@ class CatalogSeeder extends Seeder
         Product::query()
             ->whereIn('sku', $this->sampleSkus)
             ->update(['is_active' => false]);
+
+        Category::query()
+            ->whereIn('slug', $this->sampleCategorySlugs)
+            ->update(['is_active' => false, 'is_featured' => false]);
 
         $categories = collect($products)
             ->map(fn (array $product): array => [
