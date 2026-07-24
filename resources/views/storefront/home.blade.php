@@ -14,7 +14,62 @@
     </head>
     <body class="bg-zinc-950 text-white antialiased">
         <div
-            x-data="{ cartOpen: false, selectedProduct: '' }"
+            x-data="{
+                cartOpen: false,
+                items: JSON.parse(localStorage.getItem('chutamax_cart') || '[]'),
+                addToCart(product) {
+                    const item = this.items.find((cartItem) => cartItem.id === product.id);
+
+                    if (item) {
+                        item.quantity++;
+                    } else {
+                        this.items.push({ ...product, quantity: 1 });
+                    }
+
+                    this.persist();
+                    this.cartOpen = true;
+                },
+                increment(id) {
+                    this.items = this.items.map((item) => item.id === id ? { ...item, quantity: item.quantity + 1 } : item);
+                    this.persist();
+                },
+                decrement(id) {
+                    this.items = this.items
+                        .map((item) => item.id === id ? { ...item, quantity: item.quantity - 1 } : item)
+                        .filter((item) => item.quantity > 0);
+                    this.persist();
+                },
+                remove(id) {
+                    this.items = this.items.filter((item) => item.id !== id);
+                    this.persist();
+                },
+                clearCart() {
+                    this.items = [];
+                    this.persist();
+                },
+                persist() {
+                    localStorage.setItem('chutamax_cart', JSON.stringify(this.items));
+                },
+                money(cents) {
+                    return new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN' }).format(cents / 100);
+                },
+                get count() {
+                    return this.items.reduce((total, item) => total + item.quantity, 0);
+                },
+                get totalCents() {
+                    return this.items.reduce((total, item) => total + (item.price_cents * item.quantity), 0);
+                },
+                get whatsappUrl() {
+                    const lines = this.items.map((item) => `${item.quantity} x ${item.name} - ${this.money(item.price_cents * item.quantity)}`);
+                    const message = [
+                        'Hola, quiero comprar en Chutamax:',
+                        ...lines,
+                        `Total estimado: ${this.money(this.totalCents)}`
+                    ].join('\n');
+
+                    return 'https://wa.me/5216441730674?text=' + encodeURIComponent(message);
+                },
+            }"
             class="min-h-screen overflow-hidden"
         >
             <header class="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/88 backdrop-blur">
@@ -35,10 +90,16 @@
 
                     <button
                         type="button"
-                        class="rounded bg-white px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-red-100"
+                        class="relative rounded bg-white px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-red-100"
                         x-on:click="cartOpen = true"
                     >
-                        Comprar
+                        Carrito
+                        <span
+                            x-cloak
+                            x-show="count > 0"
+                            x-text="count"
+                            class="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full bg-red-600 text-xs font-black text-white"
+                        ></span>
                     </button>
                 </div>
             </header>
@@ -146,9 +207,15 @@
                                         type="button"
                                         class="mt-4 w-full rounded bg-red-600 px-4 py-3 text-sm font-black transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-zinc-700"
                                         @disabled(! $product->is_in_stock)
-                                        x-on:click="selectedProduct = @js($product->name); cartOpen = true"
+                                        x-on:click="addToCart(@js([
+                                            'id' => $product->id,
+                                            'name' => $product->name,
+                                            'price_cents' => $product->price_cents,
+                                            'price' => $product->price,
+                                            'image_url' => $product->image_url,
+                                        ]))"
                                     >
-                                        {{ $product->is_in_stock ? 'Comprar ahora' : 'Agotado' }}
+                                        {{ $product->is_in_stock ? 'Agregar al carrito' : 'Agotado' }}
                                     </button>
                                 </article>
                             @endforeach
@@ -175,6 +242,20 @@
                                             <h3 class="mt-1 font-black">{{ $product->name }}</h3>
                                             <p class="mt-1 text-sm text-zinc-400">{{ $product->short_description }}</p>
                                             <p class="mt-2 font-black">{{ $product->price }}</p>
+                                            <button
+                                                type="button"
+                                                class="mt-3 rounded bg-red-600 px-4 py-2 text-sm font-black text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-zinc-700"
+                                                @disabled(! $product->is_in_stock)
+                                                x-on:click="addToCart(@js([
+                                                    'id' => $product->id,
+                                                    'name' => $product->name,
+                                                    'price_cents' => $product->price_cents,
+                                                    'price' => $product->price,
+                                                    'image_url' => $product->image_url,
+                                                ]))"
+                                            >
+                                                {{ $product->is_in_stock ? 'Agregar al carrito' : 'Agotado' }}
+                                            </button>
                                         </div>
                                     </article>
                                 @endforeach
@@ -221,22 +302,58 @@
             >
                 <div class="ml-auto flex h-full max-w-md flex-col rounded-lg bg-white text-zinc-950 shadow-2xl">
                     <div class="flex items-center justify-between border-b border-zinc-200 p-5">
-                        <h2 class="text-xl font-black">Finalizar pedido</h2>
+                        <h2 class="text-xl font-black">Carrito</h2>
                         <button type="button" class="rounded px-3 py-2 font-black hover:bg-zinc-100" x-on:click="cartOpen = false">X</button>
                     </div>
-                    <div class="flex-1 p-5">
-                        <p class="text-sm leading-6 text-zinc-600">Por ahora cerramos pedidos por WhatsApp para confirmar stock, envio y pago.</p>
-                        <template x-if="selectedProduct">
-                            <p class="mt-4 rounded bg-red-50 p-3 text-sm font-bold text-red-700">Producto seleccionado: <span x-text="selectedProduct"></span></p>
-                        </template>
+                    <div class="flex-1 overflow-y-auto p-5">
+                        <p class="text-sm leading-6 text-zinc-600">Agrega productos al carrito. Al finalizar, se manda el resumen por WhatsApp para confirmar stock, envio y pago.</p>
+
+                        <div x-show="items.length === 0" class="mt-5 rounded border border-dashed border-zinc-300 p-5 text-center text-sm font-bold text-zinc-500">
+                            Tu carrito esta vacio.
+                        </div>
+
+                        <div x-show="items.length > 0" class="mt-5 space-y-4">
+                            <template x-for="item in items" :key="item.id">
+                                <article class="flex gap-3 rounded border border-zinc-200 p-3">
+                                    <div class="grid size-16 shrink-0 place-items-center overflow-hidden rounded bg-zinc-100">
+                                        <img x-show="item.image_url" :src="item.image_url" :alt="item.name" class="h-full w-full object-contain p-1">
+                                    </div>
+                                    <div class="min-w-0 flex-1">
+                                        <h3 class="text-sm font-black leading-tight" x-text="item.name"></h3>
+                                        <p class="mt-1 text-sm font-bold text-red-600" x-text="money(item.price_cents)"></p>
+                                        <div class="mt-3 flex items-center justify-between gap-3">
+                                            <div class="inline-flex items-center rounded border border-zinc-300">
+                                                <button type="button" class="px-3 py-1 font-black" x-on:click="decrement(item.id)">-</button>
+                                                <span class="min-w-8 text-center text-sm font-black" x-text="item.quantity"></span>
+                                                <button type="button" class="px-3 py-1 font-black" x-on:click="increment(item.id)">+</button>
+                                            </div>
+                                            <button type="button" class="text-xs font-black text-zinc-500 hover:text-red-600" x-on:click="remove(item.id)">Quitar</button>
+                                        </div>
+                                    </div>
+                                </article>
+                            </template>
+                        </div>
                     </div>
                     <div class="border-t border-zinc-200 p-5">
+                        <div class="mb-4 flex items-center justify-between text-lg font-black">
+                            <span>Total estimado</span>
+                            <span x-text="money(totalCents)"></span>
+                        </div>
                         <a
                             class="block rounded bg-red-600 px-5 py-3 text-center font-black text-white hover:bg-red-500"
-                            x-bind:href="'https://wa.me/5216441730674?text=' + encodeURIComponent('Hola, quiero comprar en Chutamax' + (selectedProduct ? ': ' + selectedProduct : ''))"
+                            x-bind:class="items.length === 0 ? 'pointer-events-none opacity-50' : ''"
+                            x-bind:href="whatsappUrl"
                         >
                             Continuar por WhatsApp
                         </a>
+                        <button
+                            type="button"
+                            class="mt-3 w-full rounded border border-zinc-300 px-5 py-3 text-center text-sm font-black text-zinc-700 hover:bg-zinc-50"
+                            x-show="items.length > 0"
+                            x-on:click="clearCart()"
+                        >
+                            Vaciar carrito
+                        </button>
                     </div>
                 </div>
             </div>
