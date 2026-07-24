@@ -19,13 +19,13 @@ class CheckoutController extends Controller
             'cart_payload' => ['required', 'json'],
             'customer_name' => ['required', 'string', 'max:255'],
             'customer_email' => ['nullable', 'email', 'max:255'],
-            'customer_phone' => ['required', 'string', 'max:30'],
+            'customer_phone' => ['required', 'string', 'regex:/^\d{10}$/'],
             'shipping_street' => ['required', 'string', 'max:255'],
             'shipping_number' => ['nullable', 'string', 'max:50'],
             'shipping_neighborhood' => ['required', 'string', 'max:255'],
             'shipping_city' => ['required', 'string', 'max:255'],
             'shipping_state' => ['required', 'string', 'max:255'],
-            'shipping_postcode' => ['required', 'string', 'max:12'],
+            'shipping_postcode' => ['required', 'string', 'regex:/^\d{5}$/'],
             'shipping_reference' => ['nullable', 'string', 'max:1000'],
             'payment_method' => ['required', Rule::in(['bank_transfer', 'cash_on_delivery', 'card_on_delivery'])],
             'notes' => ['nullable', 'string', 'max:1000'],
@@ -61,6 +61,9 @@ class CheckoutController extends Controller
             $subtotalCents = $cartItems->sum(function (array $item) use ($products): int {
                 return $products[$item['id']]->price_cents * $item['quantity'];
             });
+            $shippingCents = $subtotalCents >= (int) config('store.free_shipping_threshold_cents')
+                ? 0
+                : (int) config('store.shipping_flat_cents');
 
             $order = Order::create([
                 'code' => $this->makeOrderCode(),
@@ -68,8 +71,8 @@ class CheckoutController extends Controller
                 'payment_method' => $validated['payment_method'],
                 'payment_status' => 'pending',
                 'subtotal_cents' => $subtotalCents,
-                'shipping_cents' => 0,
-                'total_cents' => $subtotalCents,
+                'shipping_cents' => $shippingCents,
+                'total_cents' => $subtotalCents + $shippingCents,
                 'customer_name' => $validated['customer_name'],
                 'customer_email' => $validated['customer_email'] ?? null,
                 'customer_phone' => $validated['customer_phone'],

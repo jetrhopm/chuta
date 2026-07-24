@@ -21,6 +21,16 @@ it('protege el panel administrativo de visitantes anonimos', function () {
     $this->get('/admin')->assertRedirect('/admin/login');
 });
 
+it('sirve paginas legales y error 404 personalizado', function () {
+    $this->get('/politica-de-envios')
+        ->assertOk()
+        ->assertSee('Politica de envios');
+
+    $this->get('/ruta-que-no-existe')
+        ->assertNotFound()
+        ->assertSee('No encontramos esa pagina');
+});
+
 it('guarda pedidos del checkout y recalcula el total en servidor', function () {
     $this->seed();
 
@@ -44,7 +54,12 @@ it('guarda pedidos del checkout y recalcula el total en servidor', function () {
 
     $order = Order::with('items')->firstOrFail();
 
-    expect($order->total_cents)->toBe($product->price_cents * 2)
+    $subtotal = $product->price_cents * 2;
+    $shipping = $subtotal >= config('store.free_shipping_threshold_cents') ? 0 : config('store.shipping_flat_cents');
+
+    expect($order->subtotal_cents)->toBe($subtotal)
+        ->and($order->shipping_cents)->toBe($shipping)
+        ->and($order->total_cents)->toBe($subtotal + $shipping)
         ->and($order->items)->toHaveCount(1)
         ->and($order->items->first()->product_name)->toBe($product->name);
 });

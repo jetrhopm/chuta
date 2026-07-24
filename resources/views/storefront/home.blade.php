@@ -18,6 +18,8 @@
                 cartOpen: false,
                 checkoutOpen: false,
                 cartPayload: '',
+                shippingFlatCents: @js(config('store.shipping_flat_cents')),
+                freeShippingThresholdCents: @js(config('store.free_shipping_threshold_cents')),
                 items: JSON.parse(localStorage.getItem('chutamax_cart') || '[]'),
                 checkoutOrderCode: @js(session('checkout_order_code')),
                 init() {
@@ -65,7 +67,20 @@
                     return this.items.reduce((total, item) => total + item.quantity, 0);
                 },
                 get totalCents() {
+                    return this.subtotalCents + this.shippingCents;
+                },
+                get subtotalCents() {
                     return this.items.reduce((total, item) => total + (item.price_cents * item.quantity), 0);
+                },
+                get shippingCents() {
+                    if (this.items.length === 0 || this.subtotalCents >= this.freeShippingThresholdCents) {
+                        return 0;
+                    }
+
+                    return this.shippingFlatCents;
+                },
+                get freeShippingRemainingCents() {
+                    return Math.max(0, this.freeShippingThresholdCents - this.subtotalCents);
                 },
                 openCheckout() {
                     if (this.items.length === 0) {
@@ -308,9 +323,19 @@
             </main>
 
             <footer class="border-t border-white/10 bg-zinc-950">
-                <div class="mx-auto flex max-w-7xl flex-col gap-3 px-4 py-8 text-sm text-zinc-400 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">
-                    <p class="font-semibold text-white">Chutamax</p>
-                    <p>Suplementos deportivos y alimenticios.</p>
+                <div class="mx-auto grid max-w-7xl gap-6 px-4 py-8 text-sm text-zinc-400 sm:px-6 md:grid-cols-[1fr_2fr] lg:px-8">
+                    <div>
+                        <p class="font-semibold text-white">Chutamax</p>
+                        <p class="mt-2">Suplementos deportivos y alimenticios.</p>
+                    </div>
+                    <nav class="flex flex-wrap gap-x-5 gap-y-2 md:justify-end">
+                        <a class="hover:text-white" href="{{ route('pages.contact') }}">Contacto</a>
+                        <a class="hover:text-white" href="{{ route('pages.faq') }}">FAQ</a>
+                        <a class="hover:text-white" href="{{ route('pages.shipping') }}">Envios</a>
+                        <a class="hover:text-white" href="{{ route('pages.returns') }}">Cambios y devoluciones</a>
+                        <a class="hover:text-white" href="{{ route('pages.terms') }}">Terminos</a>
+                        <a class="hover:text-white" href="{{ route('pages.privacy') }}">Privacidad</a>
+                    </nav>
                 </div>
             </footer>
 
@@ -357,7 +382,19 @@
                     </div>
                     <div class="border-t border-zinc-200 p-5">
                         <div class="mb-4 flex items-center justify-between text-lg font-black">
-                            <span>Total estimado</span>
+                            <span>Subtotal</span>
+                            <span x-text="money(subtotalCents)"></span>
+                        </div>
+                        <div class="mb-4 rounded bg-zinc-100 p-3 text-sm font-bold text-zinc-600">
+                            <template x-if="freeShippingRemainingCents > 0">
+                                <span>Te faltan <span x-text="money(freeShippingRemainingCents)"></span> para envio gratis.</span>
+                            </template>
+                            <template x-if="freeShippingRemainingCents === 0 && items.length > 0">
+                                <span class="text-emerald-700">Tu pedido ya tiene envio gratis.</span>
+                            </template>
+                        </div>
+                        <div class="mb-4 flex items-center justify-between text-lg font-black">
+                            <span>Total</span>
                             <span x-text="money(totalCents)"></span>
                         </div>
                         <button
@@ -525,11 +562,19 @@
                                 </template>
                             </div>
                             <div class="mt-5 border-t border-white/10 pt-4">
+                                <div class="mb-2 flex items-center justify-between text-sm font-bold text-zinc-300">
+                                    <span>Subtotal</span>
+                                    <span x-text="money(subtotalCents)"></span>
+                                </div>
+                                <div class="mb-2 flex items-center justify-between text-sm font-bold text-zinc-300">
+                                    <span>Envio</span>
+                                    <span x-text="shippingCents === 0 ? 'Gratis' : money(shippingCents)"></span>
+                                </div>
                                 <div class="flex items-center justify-between text-xl font-black">
                                     <span>Total</span>
                                     <span class="text-red-200" x-text="money(totalCents)"></span>
                                 </div>
-                                <p class="mt-2 text-xs leading-5 text-zinc-400">El costo de envio se confirma antes de cobrar.</p>
+                                <p class="mt-2 text-xs leading-5 text-zinc-400">Envio nacional de $99 MXN; gratis desde $800 MXN.</p>
                             </div>
                             <button type="submit" class="mt-5 w-full rounded bg-red-600 px-5 py-3 font-black text-white shadow-lg shadow-red-950/30 transition hover:-translate-y-0.5 hover:bg-red-500">
                                 Enviar pedido
