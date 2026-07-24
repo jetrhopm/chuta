@@ -1,0 +1,48 @@
+# Raiz del proyecto.
+#
+# Este archivo solo es necesario cuando el document root del servidor apunta a
+# la carpeta del proyecto en lugar de apuntar a "public/" (por ejemplo XAMPP
+# sirviendo http://localhost/chuta). En Hostinger la opcion preferida es
+# apuntar el document root directamente a "public/", y entonces este archivo
+# deja de intervenir.
+#
+# Nunca sustituye a la configuracion del servidor: reenvia todo a public/ y
+# ademas niega el acceso directo a los archivos internos por si el reenvio se
+# desactiva.
+
+Options -Indexes
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Apache resuelve estas reglas en una sola pasada y no vuelve a aplicar el
+    # .htaccess de public/ despues del reenvio, asi que aqui se decide todo:
+    # los recursos estaticos se mapean dentro de public/ y cualquier otra ruta
+    # va directa al front controller. No se usa DirectoryIndex ni el nombre de
+    # la carpeta del proyecto, para que la instalacion siga siendo portable.
+
+    # Peticiones que ya vienen apuntando a public/ se dejan pasar.
+    RewriteRule ^public/ - [L]
+
+    # Recursos publicados: build/ (Vite), storage/ (enlace simbolico) y
+    # cualquier archivo con extension estatica conocida.
+    RewriteRule ^((?:build|storage)/.*)$ public/$1 [L]
+    RewriteRule ^(.+\.(?:css|js|mjs|map|json|txt|xml|ico|png|jpe?g|gif|svg|webp|avif|woff2?|ttf|otf|eot|pdf|mp4|webm))$ public/$1 [L]
+
+    # Todo lo demas lo resuelve Laravel a traves del front controller de la
+    # raiz. No se reenvia a public/index.php a proposito: ahi SCRIPT_NAME
+    # incluiria "/public" y Laravel calcularia mal la ruta base.
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Defensa en profundidad: aunque el reenvio anterior evita que estas rutas se
+# resuelvan, se bloquean de forma explicita.
+<FilesMatch "^(\.env.*|\.git.*|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|pint\.json|artisan|.*\.md|.*\.sqlite|.*\.log)$">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>

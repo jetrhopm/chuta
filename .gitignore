@@ -1,0 +1,34 @@
+/.phpunit.cache
+/node_modules
+/public/build
+/public/hot
+/public/storage
+
+# Assets publicados por Filament. Se regeneran solos con `filament:upgrade`,
+# que composer ejecuta despues de cada install o update.
+/public/css/filament
+/public/js/filament
+/public/fonts/filament
+/storage/*.key
+/storage/pail
+/vendor
+.env
+.env.backup
+.env.production
+
+# Documento de requisitos original. Queda fuera del control de versiones
+# porque incluye la contraseña de la base de datos local, y el repositorio
+# remoto es publico.
+/PROMPT_TIENDA_SUPLEMENTOS_LARAVEL.md
+.phpactor.json
+.phpunit.result.cache
+Homestead.json
+Homestead.yaml
+npm-debug.log
+yarn-error.log
+/auth.json
+/.fleet
+/.idea
+/.nova
+/.vscode
+/.zed
