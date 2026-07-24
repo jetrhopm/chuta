@@ -384,94 +384,119 @@
                 x-cloak
                 x-show="checkoutOpen"
                 x-transition.opacity
-                class="fixed inset-0 z-[60] overflow-y-auto bg-zinc-950/85 p-4 backdrop-blur"
+                class="fixed inset-0 z-[60] overflow-y-auto bg-[radial-gradient(circle_at_20%_10%,rgba(220,38,38,.32),transparent_28%),radial-gradient(circle_at_80%_0%,rgba(250,204,21,.18),transparent_24%),rgba(9,9,11,.88)] p-4 backdrop-blur"
                 x-on:click.self="checkoutOpen = false"
             >
-                <form method="POST" action="{{ route('checkout.store') }}" class="mx-auto max-w-4xl rounded-lg bg-white text-zinc-950 shadow-2xl">
+                <form method="POST" action="{{ route('checkout.store') }}" class="checkout-panel mx-auto my-4 max-w-5xl overflow-hidden rounded-lg border border-white/15 bg-white text-zinc-950 shadow-2xl">
                     @csrf
                     <input type="hidden" name="cart_payload" x-bind:value="cartPayload">
 
-                    <div class="flex items-center justify-between border-b border-zinc-200 p-5">
-                        <div>
-                            <h2 class="text-2xl font-black">Datos de envio y pago</h2>
-                            <p class="mt-1 text-sm text-zinc-600">Pedido sujeto a confirmacion de existencia y costo de envio.</p>
+                    <div class="relative overflow-hidden bg-zinc-950 p-5 text-white sm:p-7">
+                        <div class="absolute inset-0 bg-[radial-gradient(circle_at_85%_10%,rgba(220,38,38,.42),transparent_28%)]"></div>
+                        <div class="relative flex items-start justify-between gap-5">
+                            <div>
+                                <p class="text-xs font-black uppercase text-red-300">Checkout seguro</p>
+                                <h2 class="mt-2 text-3xl font-black leading-tight sm:text-4xl">Datos de envio y pago</h2>
+                                <p class="mt-2 max-w-2xl text-sm leading-6 text-zinc-300">Captura tu informacion para levantar el pedido. Revisamos existencias y costo de envio antes de cobrar.</p>
+                            </div>
+                            <button type="button" class="grid size-10 shrink-0 place-items-center rounded border border-white/15 bg-white/10 font-black text-white transition hover:bg-white/20" x-on:click="checkoutOpen = false">X</button>
                         </div>
-                        <button type="button" class="rounded px-3 py-2 font-black hover:bg-zinc-100" x-on:click="checkoutOpen = false">X</button>
+
+                        <div class="relative mt-6 grid gap-3 text-xs font-black uppercase text-zinc-300 sm:grid-cols-3">
+                            <div class="rounded border border-white/15 bg-white/10 px-4 py-3">
+                                <span class="text-red-300">01</span> Contacto
+                            </div>
+                            <div class="rounded border border-white/15 bg-white/10 px-4 py-3">
+                                <span class="text-red-300">02</span> Envio
+                            </div>
+                            <div class="rounded border border-white/15 bg-white/10 px-4 py-3">
+                                <span class="text-red-300">03</span> Pago
+                            </div>
+                        </div>
                     </div>
 
-                    <div class="grid gap-6 p-5 lg:grid-cols-[1fr_320px]">
-                        <div class="space-y-6">
-                            <section>
-                                <h3 class="mb-4 text-lg font-black">Contacto</h3>
+                    <div class="grid gap-6 bg-zinc-100 p-4 sm:p-6 lg:grid-cols-[1fr_360px]">
+                        <div class="space-y-5">
+                            <section class="checkout-section rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                                <div class="mb-4 flex items-center gap-3">
+                                    <span class="grid size-9 place-items-center rounded bg-red-600 text-sm font-black text-white">1</span>
+                                    <h3 class="text-lg font-black">Contacto</h3>
+                                </div>
                                 <div class="grid gap-4 sm:grid-cols-2">
                                     <label class="block">
                                         <span class="text-sm font-black">Nombre completo</span>
-                                        <input name="customer_name" value="{{ old('customer_name') }}" required class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input name="customer_name" value="{{ old('customer_name') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block">
                                         <span class="text-sm font-black">Telefono</span>
-                                        <input name="customer_phone" value="{{ old('customer_phone') }}" required class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input name="customer_phone" value="{{ old('customer_phone') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block sm:col-span-2">
                                         <span class="text-sm font-black">Correo</span>
-                                        <input type="email" name="customer_email" value="{{ old('customer_email') }}" class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input type="email" name="customer_email" value="{{ old('customer_email') }}" class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                 </div>
                             </section>
 
-                            <section>
-                                <h3 class="mb-4 text-lg font-black">Direccion de envio</h3>
+                            <section class="checkout-section rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                                <div class="mb-4 flex items-center gap-3">
+                                    <span class="grid size-9 place-items-center rounded bg-red-600 text-sm font-black text-white">2</span>
+                                    <h3 class="text-lg font-black">Direccion de envio</h3>
+                                </div>
                                 <div class="grid gap-4 sm:grid-cols-2">
                                     <label class="block sm:col-span-2">
                                         <span class="text-sm font-black">Calle</span>
-                                        <input name="shipping_street" value="{{ old('shipping_street') }}" required class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input name="shipping_street" value="{{ old('shipping_street') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block">
                                         <span class="text-sm font-black">Numero</span>
-                                        <input name="shipping_number" value="{{ old('shipping_number') }}" class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input name="shipping_number" value="{{ old('shipping_number') }}" class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block">
                                         <span class="text-sm font-black">Colonia</span>
-                                        <input name="shipping_neighborhood" value="{{ old('shipping_neighborhood') }}" required class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input name="shipping_neighborhood" value="{{ old('shipping_neighborhood') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block">
                                         <span class="text-sm font-black">Ciudad</span>
-                                        <input name="shipping_city" value="{{ old('shipping_city') }}" required class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input name="shipping_city" value="{{ old('shipping_city') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block">
                                         <span class="text-sm font-black">Estado</span>
-                                        <input name="shipping_state" value="{{ old('shipping_state') }}" required class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input name="shipping_state" value="{{ old('shipping_state') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block">
                                         <span class="text-sm font-black">Codigo postal</span>
-                                        <input name="shipping_postcode" value="{{ old('shipping_postcode') }}" required class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">
+                                        <input name="shipping_postcode" value="{{ old('shipping_postcode') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block sm:col-span-2">
                                         <span class="text-sm font-black">Referencia</span>
-                                        <textarea name="shipping_reference" rows="3" class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">{{ old('shipping_reference') }}</textarea>
+                                        <textarea name="shipping_reference" rows="3" class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">{{ old('shipping_reference') }}</textarea>
                                     </label>
                                 </div>
                             </section>
 
-                            <section>
-                                <h3 class="mb-4 text-lg font-black">Metodo de pago</h3>
+                            <section class="checkout-section rounded-lg border border-zinc-200 bg-white p-5 shadow-sm transition hover:shadow-md">
+                                <div class="mb-4 flex items-center gap-3">
+                                    <span class="grid size-9 place-items-center rounded bg-red-600 text-sm font-black text-white">3</span>
+                                    <h3 class="text-lg font-black">Metodo de pago</h3>
+                                </div>
                                 <div class="grid gap-3">
-                                    <label class="flex gap-3 rounded border border-zinc-300 p-4">
-                                        <input type="radio" name="payment_method" value="bank_transfer" @checked(old('payment_method', 'bank_transfer') === 'bank_transfer')>
+                                    <label class="group flex cursor-pointer gap-3 rounded border border-zinc-300 bg-zinc-50 p-4 transition hover:-translate-y-0.5 hover:border-red-300 hover:bg-white hover:shadow-md has-[:checked]:border-red-600 has-[:checked]:bg-red-50 has-[:checked]:shadow-md">
+                                        <input type="radio" name="payment_method" value="bank_transfer" class="mt-1 accent-red-600" @checked(old('payment_method', 'bank_transfer') === 'bank_transfer')>
                                         <span>
                                             <span class="block font-black">Transferencia bancaria</span>
                                             <span class="block text-sm text-zinc-600">Se enviaran los datos bancarios al confirmar disponibilidad.</span>
                                         </span>
                                     </label>
-                                    <label class="flex gap-3 rounded border border-zinc-300 p-4">
-                                        <input type="radio" name="payment_method" value="card_on_delivery" @checked(old('payment_method') === 'card_on_delivery')>
+                                    <label class="group flex cursor-pointer gap-3 rounded border border-zinc-300 bg-zinc-50 p-4 transition hover:-translate-y-0.5 hover:border-red-300 hover:bg-white hover:shadow-md has-[:checked]:border-red-600 has-[:checked]:bg-red-50 has-[:checked]:shadow-md">
+                                        <input type="radio" name="payment_method" value="card_on_delivery" class="mt-1 accent-red-600" @checked(old('payment_method') === 'card_on_delivery')>
                                         <span>
                                             <span class="block font-black">Tarjeta al recibir</span>
                                             <span class="block text-sm text-zinc-600">Sujeto a cobertura y confirmacion.</span>
                                         </span>
                                     </label>
-                                    <label class="flex gap-3 rounded border border-zinc-300 p-4">
-                                        <input type="radio" name="payment_method" value="cash_on_delivery" @checked(old('payment_method') === 'cash_on_delivery')>
+                                    <label class="group flex cursor-pointer gap-3 rounded border border-zinc-300 bg-zinc-50 p-4 transition hover:-translate-y-0.5 hover:border-red-300 hover:bg-white hover:shadow-md has-[:checked]:border-red-600 has-[:checked]:bg-red-50 has-[:checked]:shadow-md">
+                                        <input type="radio" name="payment_method" value="cash_on_delivery" class="mt-1 accent-red-600" @checked(old('payment_method') === 'cash_on_delivery')>
                                         <span>
                                             <span class="block font-black">Efectivo al recibir</span>
                                             <span class="block text-sm text-zinc-600">Disponible solo donde aplique entrega local.</span>
@@ -480,30 +505,33 @@
                                 </div>
                             </section>
 
-                            <label class="block">
+                            <label class="checkout-section block rounded-lg border border-zinc-200 bg-white p-5 shadow-sm">
                                 <span class="text-sm font-black">Notas del pedido</span>
-                                <textarea name="notes" rows="3" class="mt-1 w-full rounded border border-zinc-300 px-3 py-3 text-sm outline-none focus:border-red-500">{{ old('notes') }}</textarea>
+                                <textarea name="notes" rows="3" class="mt-2 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">{{ old('notes') }}</textarea>
                             </label>
                         </div>
 
-                        <aside class="rounded-lg bg-zinc-100 p-5">
-                            <h3 class="text-lg font-black">Resumen</h3>
-                            <div class="mt-4 max-h-72 space-y-3 overflow-y-auto">
+                        <aside class="checkout-section h-fit rounded-lg border border-zinc-800 bg-zinc-950 p-5 text-white shadow-xl lg:sticky lg:top-5">
+                            <p class="text-xs font-black uppercase text-red-300">Resumen del pedido</p>
+                            <h3 class="mt-1 text-2xl font-black">Total estimado</h3>
+                            <div class="mt-4 max-h-80 space-y-3 overflow-y-auto pr-1">
                                 <template x-for="item in items" :key="item.id">
-                                    <div class="flex justify-between gap-3 text-sm">
-                                        <span><span x-text="item.quantity"></span> x <span x-text="item.name"></span></span>
-                                        <span class="font-black" x-text="money(item.price_cents * item.quantity)"></span>
+                                    <div class="rounded border border-white/10 bg-white/8 p-3 text-sm">
+                                        <div class="flex justify-between gap-3">
+                                            <span class="font-bold"><span x-text="item.quantity"></span> x <span x-text="item.name"></span></span>
+                                            <span class="font-black text-red-200" x-text="money(item.price_cents * item.quantity)"></span>
+                                        </div>
                                     </div>
                                 </template>
                             </div>
-                            <div class="mt-5 border-t border-zinc-300 pt-4">
+                            <div class="mt-5 border-t border-white/10 pt-4">
                                 <div class="flex items-center justify-between text-xl font-black">
                                     <span>Total</span>
-                                    <span x-text="money(totalCents)"></span>
+                                    <span class="text-red-200" x-text="money(totalCents)"></span>
                                 </div>
-                                <p class="mt-2 text-xs leading-5 text-zinc-600">El costo de envio se confirma antes de cobrar.</p>
+                                <p class="mt-2 text-xs leading-5 text-zinc-400">El costo de envio se confirma antes de cobrar.</p>
                             </div>
-                            <button type="submit" class="mt-5 w-full rounded bg-red-600 px-5 py-3 font-black text-white hover:bg-red-500">
+                            <button type="submit" class="mt-5 w-full rounded bg-red-600 px-5 py-3 font-black text-white shadow-lg shadow-red-950/30 transition hover:-translate-y-0.5 hover:bg-red-500">
                                 Enviar pedido
                             </button>
                         </aside>
