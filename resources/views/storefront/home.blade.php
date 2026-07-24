@@ -59,7 +59,7 @@
                                 <a href="#productos" class="rounded bg-red-600 px-6 py-3 text-center font-black text-white transition hover:bg-red-500">
                                     Ver productos
                                 </a>
-                                <a href="https://wa.me/5210000000000?text=Hola%2C%20quiero%20cotizar%20suplementos%20de%20Chutamax" class="rounded border border-white/20 px-6 py-3 text-center font-black text-white transition hover:border-white/50">
+                                <a href="https://wa.me/5216441730674?text=Hola%2C%20quiero%20cotizar%20suplementos%20de%20Chutamax" class="rounded border border-white/20 px-6 py-3 text-center font-black text-white transition hover:border-white/50">
                                     Pedir por WhatsApp
                                 </a>
                             </div>
@@ -121,8 +121,17 @@
                         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                             @foreach ($featuredProducts as $product)
                                 <article class="group rounded-lg border border-white/10 bg-white/[.06] p-4 transition hover:-translate-y-1 hover:border-red-400/70">
-                                    <div class="mb-4 grid aspect-square place-items-center rounded bg-zinc-900">
-                                        <span class="px-4 text-center text-2xl font-black text-zinc-700">{{ $product->category->name }}</span>
+                                    <div class="mb-4 grid aspect-square place-items-center overflow-hidden rounded bg-white">
+                                        @if ($product->image_url)
+                                            <img
+                                                src="{{ $product->image_url }}"
+                                                alt="{{ $product->name }}"
+                                                class="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-105"
+                                                loading="lazy"
+                                            >
+                                        @else
+                                            <span class="px-4 text-center text-2xl font-black text-zinc-300">{{ $product->category->name }}</span>
+                                        @endif
                                     </div>
                                     <p class="text-xs font-black uppercase text-red-300">{{ $product->brand?->name }}</p>
                                     <h3 class="mt-2 min-h-14 text-lg font-black leading-tight">{{ $product->name }}</h3>
@@ -149,15 +158,30 @@
                             <div class="mt-12 grid gap-4 md:grid-cols-2">
                                 @foreach ($products as $product)
                                     <article class="flex gap-4 rounded-lg border border-white/10 bg-white/[.04] p-4">
-                                        <div class="grid size-20 shrink-0 place-items-center rounded bg-zinc-900 text-xs font-black text-zinc-600">{{ $product->category->name }}</div>
+                                        <div class="grid size-24 shrink-0 place-items-center overflow-hidden rounded bg-white text-xs font-black text-zinc-300">
+                                            @if ($product->image_url)
+                                                <img
+                                                    src="{{ $product->image_url }}"
+                                                    alt="{{ $product->name }}"
+                                                    class="h-full w-full object-contain p-2"
+                                                    loading="lazy"
+                                                >
+                                            @else
+                                                <span class="px-2 text-center">{{ $product->category->name }}</span>
+                                            @endif
+                                        </div>
                                         <div>
-                                            <p class="text-xs font-black uppercase text-red-300">{{ $product->brand?->name }}</p>
+                                            <p class="text-xs font-black uppercase text-red-300">{{ $product->category->name }}</p>
                                             <h3 class="mt-1 font-black">{{ $product->name }}</h3>
                                             <p class="mt-1 text-sm text-zinc-400">{{ $product->short_description }}</p>
                                             <p class="mt-2 font-black">{{ $product->price }}</p>
                                         </div>
                                     </article>
                                 @endforeach
+                            </div>
+
+                            <div class="mt-8">
+                                {{ $products->fragment('productos')->links() }}
                             </div>
                         @endif
                     </div>
@@ -209,7 +233,7 @@
                     <div class="border-t border-zinc-200 p-5">
                         <a
                             class="block rounded bg-red-600 px-5 py-3 text-center font-black text-white hover:bg-red-500"
-                            x-bind:href="'https://wa.me/5210000000000?text=' + encodeURIComponent('Hola, quiero comprar en Chutamax' + (selectedProduct ? ': ' + selectedProduct : ''))"
+                            x-bind:href="'https://wa.me/5216441730674?text=' + encodeURIComponent('Hola, quiero comprar en Chutamax' + (selectedProduct ? ': ' + selectedProduct : ''))"
                         >
                             Continuar por WhatsApp
                         </a>

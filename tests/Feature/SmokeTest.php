@@ -10,8 +10,8 @@ it('muestra el catalogo inicial en la tienda', function () {
     $this->get('/')
         ->assertOk()
         ->assertSee('Chutamax')
-        ->assertSee('Whey Protein Vainilla 5 lb')
-        ->assertSee('Creatina Monohidratada 300 g');
+        ->assertSee('BSN No-Xplode Pre Entreno 60 servicios')
+        ->assertSee('Optimum Nutrition Proteina Gold Standard 100% Whey 5 libras');
 });
 
 it('protege el panel administrativo de visitantes anonimos', function () {

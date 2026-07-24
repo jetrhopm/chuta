@@ -27,8 +27,8 @@ class StorefrontController extends Controller
             ->with(['brand', 'category'])
             ->active()
             ->where('is_featured', false)
-            ->latest()
-            ->get();
+            ->orderBy('name')
+            ->paginate(48);
 
         return view('storefront.home', [
             'featuredCategories' => $featuredCategories,

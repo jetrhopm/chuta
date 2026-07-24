@@ -68,6 +68,21 @@ class Product extends Model
         );
     }
 
+    protected function imageUrl(): Attribute
+    {
+        return Attribute::get(function (): ?string {
+            if ($this->image_path === null) {
+                return null;
+            }
+
+            if (str_starts_with($this->image_path, 'http://') || str_starts_with($this->image_path, 'https://')) {
+                return $this->image_path;
+            }
+
+            return asset($this->image_path);
+        });
+    }
+
     protected function isInStock(): Attribute
     {
         return Attribute::get(fn (): bool => $this->stock > 0);
