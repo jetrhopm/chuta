@@ -177,15 +177,52 @@ Hay cuatro temas definidos —`performance` (el activo, la identidad actual),
 `data-theme` en el elemento raiz. La pantalla del panel para elegirlo,
 personalizar tokens y exportar o importar la configuracion es parte de la Etapa 5.
 
-### Imagenes y migracion de medios
+### Imagenes: todo se sirve desde esta aplicacion
 
-El catalogo y los banners apuntan hoy a la biblioteca de medios del sitio actual
-(`https://chutamax.com/wp-content/uploads/...`), igual que venian de la
-migracion. Funciona, pero es fragil: **antes de apuntar el dominio a esta
-aplicacion conviene descargar los medios al almacenamiento local**, porque si el
-sitio anterior deja de responder el catalogo se queda sin fotos. Los medios
-descargados van a `storage/app/public`, que no se versiona, asi que no engordan
-el repositorio.
+La tienda no depende de ningun sitio externo para sus imagenes. Los productos y
+los banners se sirven desde `storage/app/public`, a traves del enlace simbolico
+que crea `php artisan storage:link`.
+
+Si tras importar un catalogo quedan imagenes apuntando a otro dominio, este
+comando las trae a este servidor y reescribe las rutas en la base de datos:
+
+```bash
+php artisan media:localize
+```
+
+Para ver antes que haria, sin escribir nada:
+
+```bash
+php artisan media:localize --dry-run
+```
+
+En un servidor compartido conviene hacerlo por tandas:
+
+```bash
+php artisan media:localize --limit=200
+```
+
+El comando es idempotente y se puede interrumpir: lo ya descargado se salta, asi
+que volver a ejecutarlo continua donde se quedo. Distingue dos tipos de fallo,
+porque no se arreglan igual:
+
+- **La imagen ya no existe en el origen** (respuesta 4xx, o el archivo no es una
+  imagen). No va a mejorar reintentando, asi que se olvida la direccion y el
+  producto muestra el marcador de posicion. La tienda deja de depender de ese
+  sitio incluso para las fotos que se perdieron.
+- **Fallo pasajero** (5xx, timeout, conexion caida). Se conserva la direccion
+  para reintentarla, y el comando termina con error para que un despliegue
+  automatizado se entere.
+
+El archivo se valida por su contenido y no por la extension de la URL ni por el
+encabezado que declare el servidor: se comprueba que los bytes sean de verdad una
+imagen y de ahi se deduce el formato. El nombre sale del hash del contenido, de
+modo que los nombres no son previsibles y dos productos que comparten la misma
+foto no la duplican en disco.
+
+Los medios descargados no se versionan —`storage/` esta en el `.gitignore`—, asi
+que no engordan el repositorio y hay que copiarlos aparte al despliegue, o volver
+a ejecutar el comando ahi.
 
 ## Envios
 

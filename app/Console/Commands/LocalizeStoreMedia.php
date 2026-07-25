@@ -84,11 +84,12 @@ class LocalizeStoreMedia extends Command
         $bar->start();
 
         $fallos = [];
+        $descartadas = [];
 
         // Por trozos para no cargar miles de modelos en memoria de golpe. Se
         // recorre por id porque la consulta filtra justamente la columna que se
         // va a modificar, y sin un orden estable se saltarian filas.
-        $query->orderBy('id')->chunkById(100, function ($products) use ($store, $dryRun, $bar, &$fallos): void {
+        $query->orderBy('id')->chunkById(100, function ($products) use ($store, $dryRun, $bar, &$fallos, &$descartadas): void {
             foreach ($products as $product) {
                 $original = (string) $product->image_path;
 
@@ -103,9 +104,18 @@ class LocalizeStoreMedia extends Command
 
                     $product->forceFill(['image_path' => $path])->saveQuietly();
                 } catch (RemoteImageFailed $exception) {
-                    // Se conserva la URL remota: dejarla es mejor que dejar al
-                    // producto sin ninguna imagen.
-                    $fallos[] = [$product->sku, $exception->getMessage()];
+                    if ($exception->permanent) {
+                        // La imagen ya no existe en el origen. Se olvida la
+                        // direccion para que el producto muestre el marcador de
+                        // posicion en lugar de una imagen rota, y para que la
+                        // tienda deje de depender de ese sitio.
+                        $product->forceFill(['image_path' => null])->saveQuietly();
+                        $descartadas[] = [$product->sku, $exception->getMessage()];
+                    } else {
+                        // Fallo pasajero: se conserva la direccion para poder
+                        // reintentarla en la siguiente pasada.
+                        $fallos[] = [$product->sku, $exception->getMessage()];
+                    }
                 }
 
                 $bar->advance();
@@ -115,7 +125,17 @@ class LocalizeStoreMedia extends Command
         $bar->finish();
         $this->newLine(2);
 
+        if ($descartadas !== []) {
+            $this->warn(count($descartadas).' imagenes ya no existen en el origen. Esos productos quedan sin foto:');
+            $this->table(['SKU', 'Motivo'], array_slice($descartadas, 0, 25));
+
+            if (count($descartadas) > 25) {
+                $this->line('... y '.(count($descartadas) - 25).' mas.');
+            }
+        }
+
         if ($fallos !== []) {
+            $this->error(count($fallos).' descargas fallaron por un problema pasajero. Vuelve a ejecutar el comando:');
             $this->table(['SKU', 'Motivo'], array_slice($fallos, 0, 25));
 
             if (count($fallos) > 25) {
@@ -123,6 +143,8 @@ class LocalizeStoreMedia extends Command
             }
         }
 
+        // Solo los fallos pasajeros cuentan como error: una imagen que ya no
+        // existe en el origen no es algo que se pueda arreglar reintentando.
         return count($fallos);
     }
 
@@ -140,6 +162,7 @@ class LocalizeStoreMedia extends Command
         $this->info('Descargando '.count($remotos).' banners.');
 
         $fallos = 0;
+        $descartados = [];
 
         foreach ($banners as $index => $banner) {
             if (! str_starts_with((string) ($banner['image'] ?? ''), 'http')) {
@@ -153,13 +176,24 @@ class LocalizeStoreMedia extends Command
             try {
                 $banners[$index]['image'] = $store->handle($banner['image'], 'banners');
             } catch (RemoteImageFailed $exception) {
-                $this->warn("Banner: {$exception->getMessage()}");
-                $fallos++;
+                if ($exception->permanent) {
+                    // Un banner sin imagen no sirve de nada, asi que se quita del
+                    // carrusel en lugar de dejar un hueco.
+                    $descartados[] = $index;
+                    $this->warn("Banner descartado, la imagen ya no existe: {$exception->getMessage()}");
+                } else {
+                    $this->warn("Banner con fallo pasajero: {$exception->getMessage()}");
+                    $fallos++;
+                }
             }
         }
 
+        foreach ($descartados as $index) {
+            unset($banners[$index]);
+        }
+
         if (! $dryRun) {
-            $content->saveBanners($banners);
+            $content->saveBanners(array_values($banners));
         }
 
         return $fallos;

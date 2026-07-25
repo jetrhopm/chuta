@@ -87,23 +87,37 @@ it('no vuelve a descargar lo que ya esta en este servidor', function () {
         ->assertSuccessful();
 });
 
-it('conserva la direccion original cuando la descarga falla', function () {
+it('olvida la direccion cuando la imagen ya no existe en el origen', function () {
     Http::fake(['*' => Http::response('no existe', 404)]);
 
     $product = Product::factory()->create([
-        'image_path' => 'https://sitio-anterior.test/roto.jpg',
+        'image_path' => 'https://sitio-anterior.test/borrada.jpg',
     ]);
 
-    // Falla el comando para que un despliegue se entere, pero el producto no se
-    // queda sin ninguna imagen.
+    // Un 404 no mejora reintentando. Se olvida la direccion para que el producto
+    // muestre el marcador de posicion y la tienda deje de depender de ese sitio.
+    $this->artisan('media:localize')->assertSuccessful();
+
+    expect($product->fresh()->image_path)->toBeNull();
+});
+
+it('conserva la direccion cuando el fallo puede ser pasajero', function () {
+    Http::fake(['*' => Http::response('servidor caido', 503)]);
+
+    $product = Product::factory()->create([
+        'image_path' => 'https://sitio-anterior.test/quizas.jpg',
+    ]);
+
+    // Un 5xx si puede mejorar, asi que la direccion se guarda para reintentarla
+    // y el comando falla para que un despliegue se entere.
     $this->artisan('media:localize')->assertFailed();
 
-    expect($product->fresh()->image_path)->toBe('https://sitio-anterior.test/roto.jpg');
+    expect($product->fresh()->image_path)->toBe('https://sitio-anterior.test/quizas.jpg');
 });
 
 it('un fallo suelto no detiene el resto de las descargas', function () {
     Http::fake([
-        'sitio-anterior.test/roto.jpg' => Http::response('no existe', 404),
+        'sitio-anterior.test/roto.jpg' => Http::response('servidor caido', 503),
         '*' => Http::response(pngDePrueba(), 200),
     ]);
 

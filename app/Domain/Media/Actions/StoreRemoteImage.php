@@ -88,7 +88,13 @@ class StoreRemoteImage
         }
 
         if (! $response->successful()) {
-            throw new RemoteImageFailed($url, "El servidor respondio {$response->status()}.");
+            // Un 4xx significa que la imagen ya no esta ahi y no va a volver;
+            // un 5xx puede ser un tropiezo pasajero del servidor.
+            throw new RemoteImageFailed(
+                $url,
+                "El servidor respondio {$response->status()}.",
+                permanent: $response->clientError(),
+            );
         }
 
         $bytes = $response->body();
@@ -125,13 +131,15 @@ class StoreRemoteImage
         $info = @getimagesizefromstring($bytes);
 
         if ($info === false) {
-            throw new RemoteImageFailed($url, 'El archivo descargado no es una imagen.');
+            // Lo que hay en esa direccion no es una imagen; reintentar dara lo
+            // mismo.
+            throw new RemoteImageFailed($url, 'El archivo descargado no es una imagen.', permanent: true);
         }
 
         $type = $info[2] ?? null;
 
         if (! array_key_exists($type, self::ALLOWED)) {
-            throw new RemoteImageFailed($url, 'El formato de la imagen no esta permitido.');
+            throw new RemoteImageFailed($url, 'El formato de la imagen no esta permitido.', permanent: true);
         }
 
         return [self::ALLOWED[$type], (int) $info[0], (int) $info[1]];
