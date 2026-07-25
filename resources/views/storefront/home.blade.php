@@ -18,8 +18,12 @@
                 cartOpen: false,
                 checkoutOpen: false,
                 cartPayload: '',
-                shippingFlatCents: @js(config('store.shipping_flat_cents')),
-                freeShippingThresholdCents: @js(config('store.free_shipping_threshold_cents')),
+                {{-- Adelanto para que el total se vea al instante. Lo que se
+                     cobra lo calcula el servidor al confirmar el pedido. --}}
+                shippingEnabled: @js($shipping->enabled),
+                shippingFlatCents: @js($shipping->flatCents),
+                freeShippingEnabled: @js($shipping->freeShippingEnabled),
+                freeShippingThresholdCents: @js($shipping->freeShippingThresholdCents),
                 items: JSON.parse(localStorage.getItem('chutamax_cart') || '[]'),
                 checkoutOrderCode: @js(session('checkout_order_code')),
                 init() {
@@ -73,13 +77,21 @@
                     return this.items.reduce((total, item) => total + (item.price_cents * item.quantity), 0);
                 },
                 get shippingCents() {
-                    if (this.items.length === 0 || this.subtotalCents >= this.freeShippingThresholdCents) {
+                    if (this.items.length === 0 || ! this.shippingEnabled) {
+                        return 0;
+                    }
+
+                    if (this.freeShippingEnabled && this.subtotalCents >= this.freeShippingThresholdCents) {
                         return 0;
                     }
 
                     return this.shippingFlatCents;
                 },
                 get freeShippingRemainingCents() {
+                    if (! this.freeShippingEnabled || ! this.shippingEnabled) {
+                        return 0;
+                    }
+
                     return Math.max(0, this.freeShippingThresholdCents - this.subtotalCents);
                 },
                 openCheckout() {
@@ -480,30 +492,149 @@
                                     <span class="grid size-9 place-items-center rounded bg-red-600 text-sm font-black text-white">2</span>
                                     <h3 class="text-lg font-black">Direccion de envio</h3>
                                 </div>
-                                <div class="grid gap-4 sm:grid-cols-2">
+                                {{--
+                                    Captura de direccion asistida por el catalogo
+                                    de codigos postales.
+
+                                    El codigo postal va primero porque de el sale
+                                    el resto. Si la consulta falla o el codigo no
+                                    existe, se habilita la captura manual: una
+                                    direccion que no se puede escribir es una
+                                    venta perdida, asi que el catalogo ayuda pero
+                                    nunca bloquea.
+                                --}}
+                                <div
+                                    class="grid gap-4 sm:grid-cols-2"
+                                    x-data="{
+                                        endpoint: @js(url('codigo-postal')),
+                                        postcode: @js(old('shipping_postcode', '')),
+                                        neighborhood: @js(old('shipping_neighborhood', '')),
+                                        city: @js(old('shipping_city', '')),
+                                        state: @js(old('shipping_state', '')),
+                                        settlements: [],
+                                        status: 'idle',
+                                        manual: @js(old('shipping_neighborhood') !== null),
+                                        get digits() {
+                                            return this.postcode.replace(/\D/g, '');
+                                        },
+                                        onPostcodeInput() {
+                                            this.postcode = this.digits.slice(0, 5);
+
+                                            if (this.postcode.length === 5) {
+                                                this.lookup();
+                                                return;
+                                            }
+
+                                            this.settlements = [];
+                                            this.status = 'idle';
+                                        },
+                                        async lookup() {
+                                            this.status = 'loading';
+
+                                            try {
+                                                const response = await fetch(`${this.endpoint}/${this.postcode}`, {
+                                                    headers: { 'Accept': 'application/json' },
+                                                });
+
+                                                if (! response.ok) {
+                                                    this.settlements = [];
+                                                    this.status = 'notfound';
+                                                    this.manual = true;
+                                                    return;
+                                                }
+
+                                                const payload = await response.json();
+
+                                                this.settlements = payload.data.settlements;
+                                                this.state = payload.data.state;
+                                                this.city = payload.data.city || payload.data.municipality;
+                                                this.neighborhood = this.settlements.length === 1
+                                                    ? this.settlements[0].name
+                                                    : '';
+                                                this.status = 'found';
+                                                this.manual = false;
+                                            } catch (error) {
+                                                // Una consulta caida no puede dejar
+                                                // al cliente sin poder comprar.
+                                                this.settlements = [];
+                                                this.status = 'error';
+                                                this.manual = true;
+                                            }
+                                        },
+                                    }"
+                                >
+                                    <label class="block">
+                                        <span class="text-sm font-black">Codigo postal</span>
+                                        <input
+                                            name="shipping_postcode"
+                                            x-model="postcode"
+                                            @input="onPostcodeInput()"
+                                            inputmode="numeric"
+                                            autocomplete="postal-code"
+                                            maxlength="5"
+                                            required
+                                            aria-describedby="cp-ayuda"
+                                            class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100"
+                                        >
+                                        <p id="cp-ayuda" class="mt-1 text-xs" aria-live="polite">
+                                            <span x-show="status === 'loading'" class="text-zinc-500">Buscando tu colonia...</span>
+                                            <span x-show="status === 'found'" class="text-emerald-700" x-text="`Encontramos ${settlements.length} ${settlements.length === 1 ? 'colonia' : 'colonias'} para este codigo.`"></span>
+                                            <span x-show="status === 'notfound'" class="text-amber-700">No encontramos ese codigo postal; puedes escribir tu direccion manualmente.</span>
+                                            <span x-show="status === 'error'" class="text-amber-700">No pudimos consultar el codigo postal. Escribe tu direccion manualmente.</span>
+                                            <span x-show="status === 'idle'" class="text-zinc-500">Cinco digitos. Completamos colonia, ciudad y estado.</span>
+                                        </p>
+                                    </label>
+
+                                    <label class="block">
+                                        <span class="text-sm font-black">Colonia</span>
+
+                                        {{-- Selector cuando el catalogo respondio. --}}
+                                        <select
+                                            x-show="! manual && settlements.length > 0"
+                                            x-model="neighborhood"
+                                            :name="(! manual && settlements.length > 0) ? 'shipping_neighborhood' : ''"
+                                            :required="! manual && settlements.length > 0"
+                                            class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100"
+                                        >
+                                            <option value="">Selecciona tu colonia</option>
+                                            <template x-for="settlement in settlements" :key="settlement.name">
+                                                <option :value="settlement.name" x-text="settlement.type ? `${settlement.name} (${settlement.type})` : settlement.name"></option>
+                                            </template>
+                                        </select>
+
+                                        {{-- Respaldo manual. --}}
+                                        <input
+                                            x-show="manual || settlements.length === 0"
+                                            x-model="neighborhood"
+                                            :name="(manual || settlements.length === 0) ? 'shipping_neighborhood' : ''"
+                                            :required="manual || settlements.length === 0"
+                                            class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100"
+                                        >
+
+                                        <button
+                                            type="button"
+                                            x-show="settlements.length > 0"
+                                            @click="manual = ! manual"
+                                            class="mt-1 text-xs font-bold text-red-700 underline transition hover:text-red-900"
+                                            x-text="manual ? 'Elegir de la lista' : 'Mi colonia no aparece'"
+                                        ></button>
+                                    </label>
+
                                     <label class="block sm:col-span-2">
                                         <span class="text-sm font-black">Calle</span>
-                                        <input name="shipping_street" value="{{ old('shipping_street') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
+                                        <input name="shipping_street" value="{{ old('shipping_street') }}" autocomplete="address-line1" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block">
                                         <span class="text-sm font-black">Numero</span>
                                         <input name="shipping_number" value="{{ old('shipping_number') }}" class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block">
-                                        <span class="text-sm font-black">Colonia</span>
-                                        <input name="shipping_neighborhood" value="{{ old('shipping_neighborhood') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
-                                    </label>
-                                    <label class="block">
                                         <span class="text-sm font-black">Ciudad</span>
-                                        <input name="shipping_city" value="{{ old('shipping_city') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
+                                        <input name="shipping_city" x-model="city" autocomplete="address-level2" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
-                                    <label class="block">
+                                    <label class="block sm:col-span-2">
                                         <span class="text-sm font-black">Estado</span>
-                                        <input name="shipping_state" value="{{ old('shipping_state') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
-                                    </label>
-                                    <label class="block">
-                                        <span class="text-sm font-black">Codigo postal</span>
-                                        <input name="shipping_postcode" value="{{ old('shipping_postcode') }}" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
+                                        <input name="shipping_state" x-model="state" autocomplete="address-level1" required class="mt-1 w-full rounded border border-zinc-300 bg-zinc-50 px-3 py-3 text-sm outline-none transition focus:border-red-500 focus:bg-white focus:ring-4 focus:ring-red-100">
                                     </label>
                                     <label class="block sm:col-span-2">
                                         <span class="text-sm font-black">Referencia</span>

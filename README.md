@@ -159,6 +159,65 @@ pasarela de pago y, por tanto, no hay ventana de pago que reservar. Implementar
 el ciclo de reserva ahora dejaria codigo que nada ejercita. Se hara junto con los
 pagos, cuando haya un pago pendiente real que pueda expirar.
 
+## Envios
+
+La tarifa unica nacional arranca en `$99.00 MXN` y el umbral de envio gratis en
+`$800.00 MXN`, pero una vez sembrados la fuente de verdad es la configuracion
+administrable, no el archivo de entorno. Se ajusta en **Configuracion > Envios**:
+activar o desactivar los envios, nombre visible del metodo, tarifa, umbral, si el
+umbral se compara antes o despues de descuentos, dias de preparacion, mensaje de
+entrega estimada y estados o codigos postales sin cobertura.
+
+Los valores de `.env` solo siembran la configuracion en la primera instalacion,
+para que un despliegue nuevo pueda partir de otras cifras sin tocar codigo.
+Volver a ejecutar los seeders no pisa lo que ya se haya ajustado en el panel.
+
+El costo se calcula siempre en el servidor, en
+`App\Domain\Shipping\Actions\CalculateShipping`. La tienda muestra un adelanto en
+el navegador para que el cliente vea el total al instante, pero lo que se cobra
+sale del servidor: hay una prueba que envia un envio de cero en el formulario y
+comprueba que el pedido se guarda con la tarifa correcta.
+
+## Codigos postales (SEPOMEX)
+
+La captura de direcciones no depende de ninguna API de terceros: se consulta una
+tabla local importada del catalogo oficial de Correos de Mexico.
+
+Descarga el catalogo nacional desde
+<https://www.correosdemexico.gob.mx/SSLServicios/ConsultaCP/CodigoPostal_Exportar.aspx>
+(el archivo delimitado por barras verticales) y importalo:
+
+```bash
+php artisan sepomex:import ruta/al/CPdescarga.txt
+```
+
+Para reemplazar el catalogo completo en lugar de actualizarlo:
+
+```bash
+php artisan sepomex:import ruta/al/CPdescarga.txt --fresh
+```
+
+El importador lee en flujo e inserta por lotes, porque el catalogo nacional pasa
+de las 145 mil filas y no cabe entero en el limite de memoria habitual de PHP.
+Convierte la codificacion Windows-1252 del archivo a UTF-8 —sin eso los nombres
+con acento llegan corrompidos—, rellena el cero inicial que el catalogo a veces
+omite y usa `upsert`, asi que se puede volver a correr cuando Correos publique
+una version nueva sin duplicar asentamientos.
+
+En el checkout, al escribir los cinco digitos se consulta
+`/codigo-postal/{cp}` sin recargar la pagina y se completan estado, municipio y
+ciudad, con **todos** los asentamientos del codigo en un selector; recortar esa
+lista dejaria al cliente sin poder elegir su colonia. La ruta lleva limite de
+peticiones porque es publica y se llama a cada tecla.
+
+Si el codigo no existe o la consulta falla, se habilita la captura manual con un
+aviso comprensible. Una direccion que no se puede escribir es una venta perdida,
+asi que el catalogo ayuda pero nunca bloquea.
+
+Las pruebas no necesitan el catalogo nacional: usan
+`tests/Fixtures/sepomex-muestra.txt`, que reproduce el formato oficial con unas
+pocas filas, incluidas las que el importador debe descartar.
+
 ## Credenciales locales
 
 Las cuentas iniciales se crean con los seeders y son exclusivamente para el
@@ -189,7 +248,11 @@ entorno local. En produccion debe exigirse el cambio de contraseña.
       reservar (ver [Inventario](#inventario)).
 - [ ] Etapa 5 — Temas, contenido y escaparate.
 - [ ] Etapa 6 — Busqueda, carrito y promociones.
-- [ ] Etapa 7 — SEPOMEX, envios y checkout.
+- [x] Etapa 7 — Envios configurables desde el panel y captura de direcciones
+      contra el catalogo local de codigos postales, con respaldo manual. Ver
+      [Envios](#envios) y [Codigos postales](#codigos-postales-sepomex). El
+      checkout de invitado ya funcionaba; falta la clave de idempotencia, que va
+      junto con los pagos.
 - [ ] Etapa 8 — Pedidos y cuentas de cliente.
 - [ ] Etapa 9 — Pagos.
 - [ ] Etapa 10 — SMTP y Meta Ads.

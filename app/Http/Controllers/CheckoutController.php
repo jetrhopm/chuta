@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Inventory\Actions\DeductStockForOrder;
 use App\Domain\Inventory\Exceptions\InsufficientStock;
+use App\Domain\Shipping\Actions\CalculateShipping;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
@@ -16,7 +17,10 @@ use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
-    public function __construct(private readonly DeductStockForOrder $deductStock) {}
+    public function __construct(
+        private readonly DeductStockForOrder $deductStock,
+        private readonly CalculateShipping $calculateShipping,
+    ) {}
 
     public function store(Request $request): RedirectResponse
     {
@@ -116,9 +120,23 @@ class CheckoutController extends Controller
             $subtotalCents = $cartItems->sum(function (array $item) use ($products): int {
                 return $products[$item['id']]->price_cents * $item['quantity'];
             });
-            $shippingCents = $subtotalCents >= (int) config('store.free_shipping_threshold_cents')
-                ? 0
-                : (int) config('store.shipping_flat_cents');
+
+            // El envio se calcula aqui, en el servidor. Lo que la tienda muestre
+            // en el navegador es solo un adelanto para que el cliente vea el
+            // total al instante; nunca es lo que se cobra.
+            $quote = $this->calculateShipping->handle(
+                subtotalCents: $subtotalCents,
+                state: $validated['shipping_state'],
+                postcode: $validated['shipping_postcode'],
+            );
+
+            if (! $quote->isAvailable()) {
+                throw ValidationException::withMessages([
+                    'shipping_postcode' => $quote->unavailableReason,
+                ]);
+            }
+
+            $shippingCents = $quote->costCents;
 
             $order = Order::create([
                 'code' => $this->makeOrderCode(),

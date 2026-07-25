@@ -4,32 +4,8 @@ use App\Domain\Inventory\Enums\InventoryMovementType;
 use App\Models\InventoryMovement;
 use App\Models\Order;
 use App\Models\Product;
-use Illuminate\Testing\TestResponse;
 
-/**
- * @param  array<int, array{0: Product, 1: int}>  $lineas
- */
-function enviarCheckout(array $lineas): TestResponse
-{
-    $payload = array_map(
-        fn (array $linea): array => ['id' => $linea[0]->id, 'quantity' => $linea[1]],
-        $lineas,
-    );
-
-    return test()->post('/checkout', [
-        'cart_payload' => json_encode($payload),
-        'customer_name' => 'Cliente Prueba',
-        'customer_email' => 'cliente@example.test',
-        'customer_phone' => '6441234567',
-        'shipping_street' => 'Calle Uno',
-        'shipping_number' => '123',
-        'shipping_neighborhood' => 'Centro',
-        'shipping_city' => 'Obregon',
-        'shipping_state' => 'Sonora',
-        'shipping_postcode' => '85000',
-        'payment_method' => 'bank_transfer',
-    ]);
-}
+// El ayudante enviarCheckout() vive en tests/Pest.php.
 
 it('descuenta el inventario al confirmar un pedido', function () {
     $product = Product::factory()->withStock(10)->create();

@@ -1,0 +1,11 @@
+Catálogo Nacional de Códigos Postales
+d_codigo|d_asenta|d_tipo_asenta|D_mnpio|d_estado|d_ciudad|d_CP|c_estado|c_oficina|c_CP|c_tipo_asenta|c_mnpio|id_asenta_cpcons|d_zona|c_cve_ciudad
+85000|Centro|Colonia|Cajeme|Sonora|Ciudad Obregón|85000|26|85000||09|018|0001|Urbano|09
+85000|Cortinas|Colonia|Cajeme|Sonora|Ciudad Obregón|85000|26|85000||09|018|0002|Urbano|09
+85000|Municipio Libre|Colonia|Cajeme|Sonora|Ciudad Obregón|85000|26|85000||09|018|0003|Urbano|09
+06700|Roma Norte|Colonia|Cuauhtémoc|Ciudad de México|Ciudad de México|06700|09|06700||09|015|0001|Urbano|01
+06700|Roma Sur|Colonia|Cuauhtémoc|Ciudad de México|Ciudad de México|06700|09|06700||09|015|0002|Urbano|01
+6760|Condesa|Colonia|Cuauhtémoc|Ciudad de México|Ciudad de México|06760|09|06760||09|015|0001|Urbano|01
+64000||Colonia|Monterrey|Nuevo León|Monterrey|64000|19|64000||09|039|0001|Urbano|01
+64000|Obispado|Colonia|Monterrey|Nuevo León|Monterrey|64000|19|64000||09|039|0002|Urbano|01
+incompleta|sin|columnas
