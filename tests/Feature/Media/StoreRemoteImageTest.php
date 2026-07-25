@@ -64,6 +64,15 @@ it('rechaza una direccion que no es una URL', function () {
         ->toThrow(RemoteImageFailed::class);
 });
 
+it('acepta direcciones con caracteres internacionales en la ruta', function () {
+    Http::fake(['*' => Http::response(pngDePrueba(), 200)]);
+
+    $path = app(StoreRemoteImage::class)->handle('https://ejemplo.test/뉴_플래티넘_하이드로_웨이.png');
+
+    expect($path)->toStartWith('products/')
+        ->and(Storage::disk('public')->exists($path))->toBeTrue();
+});
+
 it('guarda los banners en su propia carpeta', function () {
     Http::fake(['*' => Http::response(pngDePrueba(), 200)]);
 

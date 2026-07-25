@@ -71,7 +71,9 @@ class StoreRemoteImage
      */
     private function fetch(string $url): string
     {
-        if (! filter_var($url, FILTER_VALIDATE_URL) || ! str_starts_with($url, 'http')) {
+        $requestUrl = $this->normalizeUrl($url);
+
+        if (! filter_var($requestUrl, FILTER_VALIDATE_URL) || ! str_starts_with($requestUrl, 'http')) {
             throw new RemoteImageFailed($url, 'La direccion no es una URL valida.');
         }
 
@@ -80,7 +82,7 @@ class StoreRemoteImage
                 // Un reintento y nada mas: con miles de imagenes, insistir de mas
                 // convierte una descarga larga en una que no termina.
                 ->retry(2, 500, throw: false)
-                ->get($url);
+                ->get($requestUrl);
         } catch (ConnectionException $exception) {
             throw new RemoteImageFailed($url, 'No se pudo conectar con el servidor de la imagen.');
         }
@@ -100,6 +102,17 @@ class StoreRemoteImage
         }
 
         return $bytes;
+    }
+
+    private function normalizeUrl(string $url): string
+    {
+        $url = trim($url);
+
+        return preg_replace_callback(
+            '/[^\x21-\x7E]/u',
+            fn (array $match): string => rawurlencode($match[0]),
+            $url,
+        ) ?? $url;
     }
 
     /**
