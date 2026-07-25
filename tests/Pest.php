@@ -23,6 +23,27 @@ pest()->extend(TestCase::class)
 */
 
 /**
+ * Bytes de un PNG valido, generados al vuelo.
+ *
+ * Se genera en lugar de guardar un archivo binario en el repositorio, y sirve
+ * para comprobar que la validacion de imagenes mira el contenido real y no la
+ * extension de la URL ni el encabezado que declare el servidor.
+ */
+function pngDePrueba(int $ancho = 8, int $alto = 8): string
+{
+    $imagen = imagecreatetruecolor($ancho, $alto);
+    imagefill($imagen, 0, 0, imagecolorallocate($imagen, 191, 8, 31));
+
+    ob_start();
+    imagepng($imagen);
+    $bytes = (string) ob_get_clean();
+
+    imagedestroy($imagen);
+
+    return $bytes;
+}
+
+/**
  * Envia el formulario de checkout con datos validos.
  *
  * Solo se pasan las lineas del carrito; el resto de los campos son datos de

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Shipping\ShippingSettingsRepository;
+use App\Domain\Storefront\StorefrontContentRepository;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
@@ -10,7 +11,10 @@ use Illuminate\Support\Collection;
 
 class StorefrontController extends Controller
 {
-    public function __construct(private readonly ShippingSettingsRepository $shippingSettings) {}
+    public function __construct(
+        private readonly ShippingSettingsRepository $shippingSettings,
+        private readonly StorefrontContentRepository $content,
+    ) {}
 
     public function __invoke(): View
     {
@@ -39,7 +43,7 @@ class StorefrontController extends Controller
             'featuredProducts' => $featuredProducts,
             'products' => $products,
             'categoryShortcuts' => $this->categoryShortcuts(),
-            'banners' => collect(config('storefront.banners', [])),
+            'banners' => collect($this->content->displayBanners()),
             'howToBuy' => collect(config('storefront.how_to_buy', [])),
             // La tienda muestra estos valores como adelanto del total. El costo
             // que se cobra lo recalcula el servidor al confirmar el pedido.

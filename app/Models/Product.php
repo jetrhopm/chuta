@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\Storage;
 
 class Product extends Model
 {
@@ -122,11 +123,16 @@ class Product extends Model
                 return null;
             }
 
+            // Las imagenes que aun no se han descargado siguen apuntando al sitio
+            // de origen. El comando `media:localize` las trae a este servidor y
+            // deja aqui una ruta relativa del disco publico.
             if (str_starts_with($this->image_path, 'http://') || str_starts_with($this->image_path, 'https://')) {
                 return $this->image_path;
             }
 
-            return asset($this->image_path);
+            // Storage::url y no asset(): el archivo vive en storage/app/public y
+            // se sirve por el enlace simbolico, no desde el arbol de public/.
+            return Storage::disk('public')->url($this->image_path);
         });
     }
 

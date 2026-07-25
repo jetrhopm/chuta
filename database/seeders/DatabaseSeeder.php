@@ -16,6 +16,7 @@ class DatabaseSeeder extends Seeder
             RolesAndPermissionsSeeder::class,
             AdminUsersSeeder::class,
             ShippingSettingsSeeder::class,
+            StorefrontContentSeeder::class,
             CatalogSeeder::class,
         ]);
     }

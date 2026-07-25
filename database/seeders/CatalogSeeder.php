@@ -88,24 +88,41 @@ class CatalogSeeder extends Seeder
             $regularPrice = (int) $product['regular_price_cents'];
             $price = (int) $product['price_cents'];
 
-            Product::updateOrCreate(
-                ['sku' => (string) $product['sku']],
-                [
-                    'brand_id' => null,
-                    'category_id' => $category->id,
-                    'name' => (string) $product['name'],
-                    'slug' => (string) $product['slug'],
-                    'short_description' => $this->shortDescription($product),
-                    'description' => 'Producto migrado desde Chutamax.',
-                    'image_path' => $product['image_url'] ?: null,
-                    'price_cents' => $price,
-                    'compare_at_price_cents' => $regularPrice > $price ? $regularPrice : null,
-                    'stock' => $product['is_in_stock'] ? 10 : 0,
-                    'is_featured' => (bool) $product['is_featured'],
-                    'is_active' => true,
-                ],
-            );
+            $existing = Product::where('sku', (string) $product['sku'])->first();
+
+            $attributes = [
+                'brand_id' => $existing?->brand_id,
+                'category_id' => $category->id,
+                'name' => (string) $product['name'],
+                'slug' => (string) $product['slug'],
+                'short_description' => $this->shortDescription($product),
+                'description' => 'Producto del catalogo de la tienda.',
+                'price_cents' => $price,
+                'compare_at_price_cents' => $regularPrice > $price ? $regularPrice : null,
+                'is_featured' => (bool) $product['is_featured'],
+                'is_active' => true,
+            ];
+
+            // La imagen solo se asigna si el producto todavia no tiene una
+            // descargada. Sin esta comprobacion, volver a sembrar devolveria la
+            // ruta al sitio de origen y desharia el trabajo de `media:localize`.
+            if ($existing === null || $this->isRemote($existing->image_path)) {
+                $attributes['image_path'] = $product['image_url'] ?: null;
+            }
+
+            // Las existencias tampoco se pisan: las mueve el historial de
+            // inventario, y reescribirlas aqui contradiria sus movimientos.
+            if ($existing === null) {
+                $attributes['stock'] = $product['is_in_stock'] ? 10 : 0;
+            }
+
+            Product::updateOrCreate(['sku' => (string) $product['sku']], $attributes);
         }
+    }
+
+    private function isRemote(?string $path): bool
+    {
+        return $path === null || str_starts_with($path, 'http://') || str_starts_with($path, 'https://');
     }
 
     private function categoryDescription(string $category): string
