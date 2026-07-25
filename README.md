@@ -159,6 +159,34 @@ pasarela de pago y, por tanto, no hay ventana de pago que reservar. Implementar
 el ciclo de reserva ahora dejaria codigo que nada ejercita. Se hara junto con los
 pagos, cuando haya un pago pendiente real que pueda expirar.
 
+## Identidad visual y temas
+
+El escaparate reproduce la identidad de la tienda: negro, blanco, grises y el
+rojo de marca `#BF081F`, con **Bebas Neue** para titulos y nombres de producto,
+**Anton** para los encabezados de seccion y **Roboto** para el texto corrido.
+
+Las tres tipografias se instalan por npm y las empaqueta Vite. No se piden a un
+servidor externo: en produccion la tienda debe funcionar solo con los archivos
+compilados.
+
+Los colores viven como design tokens en variables CSS dentro de
+`resources/css/app.css`, y los componentes leen esas variables en lugar de
+colores escritos a mano, para que cambiar de tema no obligue a tocar plantillas.
+Hay cuatro temas definidos —`performance` (el activo, la identidad actual),
+`electric`, `premium` y `fresh`— y se cambian poniendo un atributo
+`data-theme` en el elemento raiz. La pantalla del panel para elegirlo,
+personalizar tokens y exportar o importar la configuracion es parte de la Etapa 5.
+
+### Imagenes y migracion de medios
+
+El catalogo y los banners apuntan hoy a la biblioteca de medios del sitio actual
+(`https://chutamax.com/wp-content/uploads/...`), igual que venian de la
+migracion. Funciona, pero es fragil: **antes de apuntar el dominio a esta
+aplicacion conviene descargar los medios al almacenamiento local**, porque si el
+sitio anterior deja de responder el catalogo se queda sin fotos. Los medios
+descargados van a `storage/app/public`, que no se versiona, asi que no engordan
+el repositorio.
+
 ## Envios
 
 La tarifa unica nacional arranca en `$99.00 MXN` y el umbral de envio gratis en
@@ -246,7 +274,11 @@ entorno local. En produccion debe exigirse el cambio de contraseña.
       ajuste manual trazable desde el panel. Las reservas durante el pago se
       dejan para la etapa de pagos, cuando exista una ventana de pago que
       reservar (ver [Inventario](#inventario)).
-- [ ] Etapa 5 — Temas, contenido y escaparate.
+- [~] Etapa 5 — Escaparate rehecho con la identidad de la tienda y los cuatro
+      temas definidos como design tokens (ver
+      [Identidad visual y temas](#identidad-visual-y-temas)). Falta administrar
+      desde el panel los carruseles, los bloques ordenables de la portada, el
+      blog y la seleccion de tema.
 - [ ] Etapa 6 — Busqueda, carrito y promociones.
 - [x] Etapa 7 — Envios configurables desde el panel y captura de direcciones
       contra el catalogo local de codigos postales, con respaldo manual. Ver

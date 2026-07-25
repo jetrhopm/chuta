@@ -27,4 +27,47 @@ window.Swal = Swal.mixin({
 window.Swiper = Swiper;
 window.SwiperModules = { A11y, Autoplay, Keyboard, Navigation, Pagination };
 
+/**
+ * Carrusel accesible del escaparate.
+ *
+ * Se pausa al interactuar y al pasar el puntero, se puede manejar con el
+ * teclado y respeta a quien pidio menos movimiento en su sistema: en ese caso
+ * no avanza solo, para que una animacion no bloquee la lectura.
+ */
+Alpine.data('carrusel', () => ({
+    swiper: null,
+
+    iniciar(el) {
+        const menosMovimiento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+        this.swiper = new Swiper(el, {
+            modules: [A11y, Autoplay, Keyboard, Navigation, Pagination],
+            loop: true,
+            speed: menosMovimiento ? 0 : 500,
+            autoplay: menosMovimiento
+                ? false
+                : { delay: 6000, pauseOnMouseEnter: true, disableOnInteraction: true },
+            keyboard: { enabled: true },
+            a11y: {
+                enabled: true,
+                prevSlideMessage: 'Promocion anterior',
+                nextSlideMessage: 'Promocion siguiente',
+                paginationBulletMessage: 'Ir a la promocion {{index}}',
+            },
+            navigation: {
+                prevEl: el.querySelector('.swiper-button-prev'),
+                nextEl: el.querySelector('.swiper-button-next'),
+            },
+            pagination: {
+                el: el.querySelector('.swiper-pagination'),
+                clickable: true,
+            },
+        });
+    },
+
+    destroy() {
+        this.swiper?.destroy();
+    },
+}));
+
 Alpine.start();

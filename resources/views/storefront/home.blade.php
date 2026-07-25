@@ -26,9 +26,42 @@
                 freeShippingThresholdCents: @js($shipping->freeShippingThresholdCents),
                 items: JSON.parse(localStorage.getItem('chutamax_cart') || '[]'),
                 checkoutOrderCode: @js(session('checkout_order_code')),
+                busqueda: '',
                 init() {
                     if (this.checkoutOrderCode) {
                         this.clearCart();
+                    }
+                },
+                {{--
+                    Filtro rapido sobre lo que ya esta en la pagina. Sirve para
+                    encontrar algo entre los productos visibles sin esperar al
+                    servidor; la busqueda en todo el catalogo con indice de texto
+                    completo llega en la Etapa 6.
+                --}}
+                {{-- El alta real al boletin se conecta con el modulo de correos. --}}
+                avisoBoletin() {
+                    window.Swal.fire({
+                        title: 'Casi listo',
+                        text: 'El alta al boletin se activa junto con el envio de correos. Mientras tanto escribenos por WhatsApp.',
+                        icon: 'info',
+                        confirmButtonText: 'Entendido',
+                    });
+                },
+                filtrarCatalogo() {
+                    const termino = this.busqueda.trim().toLowerCase();
+
+                    document.querySelectorAll('[data-producto]').forEach((tarjeta) => {
+                        const coincide = termino === ''
+                            || tarjeta.dataset.producto.includes(termino);
+
+                        tarjeta.hidden = ! coincide;
+                    });
+
+                    const vacio = document.querySelector('[data-sin-resultados]');
+
+                    if (vacio) {
+                        const visibles = document.querySelectorAll('[data-producto]:not([hidden])').length;
+                        vacio.hidden = visibles > 0;
                     }
                 },
                 addToCart(product) {
@@ -120,25 +153,48 @@
                 </div>
             @endif
 
-            <header class="sticky top-0 z-40 border-b border-white/10 bg-zinc-950/88 backdrop-blur">
-                <div class="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-                    <a href="{{ route('storefront.home') }}" class="flex items-center gap-3" aria-label="Chutamax inicio">
-                        <span class="grid size-11 place-items-center rounded bg-red-600 text-xl font-black tracking-normal">C</span>
-                        <span>
-                            <span class="block text-lg font-black leading-none">Chutamax</span>
-                            <span class="block text-xs font-semibold uppercase text-red-300">Suplementos deportivos</span>
+            {{-- Barra de anuncios --}}
+            <div class="bg-[var(--color-brand)] px-4 py-2 text-center">
+                <p class="display-title text-base text-white sm:text-lg">
+                    Envio gratis en compras desde <span x-text="money(freeShippingThresholdCents)"></span> &middot; Cd. Obregon, Sonora
+                </p>
+            </div>
+
+            <header class="sticky top-0 z-40 bg-black shadow-lg">
+                {{-- Fila principal: logo, buscador y carrito --}}
+                <div class="mx-auto flex max-w-7xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6 lg:px-8">
+                    <a href="{{ route('storefront.home') }}" class="flex items-center gap-3" aria-label="Chutamax, ir al inicio">
+                        <span class="display-title grid size-12 place-items-center bg-[var(--color-brand)] text-3xl text-white">C</span>
+                        <span class="leading-none">
+                            <span class="display-title block text-2xl text-white">Chutamax</span>
+                            <span class="block text-[0.65rem] font-bold uppercase tracking-[0.18em] text-white/70">Vitaminas y suplementos</span>
                         </span>
                     </a>
 
-                    <nav class="hidden items-center gap-7 text-sm font-semibold text-zinc-200 md:flex">
-                        <a class="hover:text-white" href="#categorias">Categorias</a>
-                        <a class="hover:text-white" href="#productos">Productos</a>
-                        <a class="hover:text-white" href="#envios">Envios</a>
-                    </nav>
+                    <form
+                        role="search"
+                        class="order-3 w-full sm:order-none sm:ml-auto sm:w-auto sm:flex-1 sm:max-w-md"
+                        x-on:submit.prevent="filtrarCatalogo()"
+                    >
+                        <label class="sr-only" for="buscador">Buscar productos</label>
+                        <div class="flex overflow-hidden rounded border-2 border-white/15 bg-white focus-within:border-[var(--color-brand)]">
+                            <input
+                                id="buscador"
+                                type="search"
+                                x-model="busqueda"
+                                x-on:input.debounce.250ms="filtrarCatalogo()"
+                                placeholder="Busca proteina, creatina, marca..."
+                                class="w-full px-3 py-2 text-sm text-[var(--color-ink)] outline-none"
+                            >
+                            <button type="submit" class="display-title bg-[var(--color-brand)] px-4 text-lg text-white transition hover:bg-[var(--color-brand-strong)]">
+                                Buscar
+                            </button>
+                        </div>
+                    </form>
 
                     <button
                         type="button"
-                        class="relative rounded bg-white px-4 py-2 text-sm font-bold text-zinc-950 transition hover:bg-red-100"
+                        class="display-title relative ml-auto flex items-center gap-2 bg-white px-4 py-2 text-lg text-black transition hover:bg-[var(--color-surface-muted)] sm:ml-0"
                         x-on:click="cartOpen = true"
                     >
                         Carrito
@@ -146,208 +202,233 @@
                             x-cloak
                             x-show="count > 0"
                             x-text="count"
-                            class="absolute -right-2 -top-2 grid size-6 place-items-center rounded-full bg-red-600 text-xs font-black text-white"
+                            class="grid size-6 place-items-center rounded-full bg-[var(--color-brand)] text-xs font-bold text-white"
                         ></span>
                     </button>
                 </div>
+
+                {{-- Menu de secciones --}}
+                <nav aria-label="Secciones de la tienda" class="border-t border-white/10 bg-black">
+                    <div class="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8">
+                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="{{ route('storefront.home') }}">Inicio</a>
+                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="#productos">Productos</a>
+                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="#categorias">Categorias</a>
+                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="#como-comprar">Como comprar</a>
+                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="{{ route('pages.shipping') }}">Envios</a>
+                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="{{ route('pages.contact') }}">Contacto</a>
+                    </div>
+                </nav>
             </header>
 
             <main>
-                <section class="relative">
-                    <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(220,38,38,.34),transparent_30%),radial-gradient(circle_at_80%_0%,rgba(250,204,21,.18),transparent_26%)]"></div>
-                    <div class="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 md:grid-cols-[1.05fr_.95fr] lg:px-8 lg:py-20">
-                        <div class="flex flex-col justify-center">
-                            <p class="mb-4 text-sm font-black uppercase tracking-normal text-red-300">Rendimiento, fuerza y recuperacion</p>
-                            <h1 class="max-w-3xl text-5xl font-black leading-none sm:text-6xl lg:text-7xl">
-                                Suplementos listos para tu siguiente entrenamiento.
-                            </h1>
-                            <p class="mt-6 max-w-2xl text-lg leading-8 text-zinc-300">
-                                Proteinas, creatinas, pre entrenos y vitaminas con carrito, datos de envio y metodos de pago para levantar tu pedido.
-                            </p>
-                            <div class="mt-8 flex flex-col gap-3 sm:flex-row">
-                                <a href="#productos" class="rounded bg-red-600 px-6 py-3 text-center font-black text-white transition hover:bg-red-500">
-                                    Ver productos
-                                </a>
-                                <button type="button" class="rounded border border-white/20 px-6 py-3 text-center font-black text-white transition hover:border-white/50" x-on:click="cartOpen = true">
-                                    Abrir carrito
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="relative min-h-[420px]">
-                            <div class="absolute inset-x-8 top-8 h-72 rounded-full bg-red-600/25 blur-3xl"></div>
-                            <div class="relative grid h-full place-items-center">
-                                <div class="w-full max-w-md rounded-lg border border-white/10 bg-white/8 p-5 shadow-2xl backdrop-blur">
-                                    <div class="aspect-[4/5] rounded bg-gradient-to-br from-red-600 via-zinc-900 to-yellow-400 p-6">
-                                        <div class="flex h-full flex-col justify-between rounded border border-white/20 bg-zinc-950/45 p-6">
-                                            <div>
-                                                <p class="text-sm font-black uppercase text-yellow-200">Stack recomendado</p>
-                                                <h2 class="mt-3 text-4xl font-black leading-none">Fuerza + recuperacion</h2>
-                                            </div>
-                                            <div class="grid grid-cols-2 gap-3 text-sm font-bold">
-                                                <span class="rounded bg-white px-3 py-2 text-zinc-950">Whey</span>
-                                                <span class="rounded bg-white px-3 py-2 text-zinc-950">Creatina</span>
-                                                <span class="rounded bg-white px-3 py-2 text-zinc-950">Pre entreno</span>
-                                                <span class="rounded bg-white px-3 py-2 text-zinc-950">Vitaminas</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
-                <section id="categorias" class="border-y border-white/10 bg-white text-zinc-950">
-                    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-                        <div class="mb-7 flex items-end justify-between gap-5">
-                            <div>
-                                <p class="text-sm font-black uppercase text-red-600">Compra por objetivo</p>
-                                <h2 class="mt-2 text-3xl font-black">Categorias principales</h2>
-                            </div>
-                        </div>
-                        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                            @foreach ($featuredCategories as $category)
-                                <article class="rounded-lg border border-zinc-200 bg-zinc-50 p-5 transition hover:-translate-y-1 hover:border-red-200 hover:shadow-lg">
-                                    <h3 class="text-xl font-black">{{ $category->name }}</h3>
-                                    <p class="mt-3 text-sm leading-6 text-zinc-600">{{ $category->description }}</p>
-                                </article>
-                            @endforeach
-                        </div>
-                    </div>
-                </section>
-
-                <section id="productos" class="bg-zinc-950">
-                    <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
-                        <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-                            <div>
-                                <p class="text-sm font-black uppercase text-red-300">Disponibles ahora</p>
-                                <h2 class="mt-2 text-3xl font-black">Productos destacados</h2>
-                            </div>
-                            <p class="max-w-md text-sm leading-6 text-zinc-400">Los precios se confirman al cerrar pedido. Si algo se agota, te damos una alternativa antes de cobrar.</p>
-                        </div>
-
-                        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-                            @foreach ($featuredProducts as $product)
-                                <article class="group rounded-lg border border-white/10 bg-white/[.06] p-4 transition hover:-translate-y-1 hover:border-red-400/70">
-                                    <div class="mb-4 grid aspect-square place-items-center overflow-hidden rounded bg-white">
-                                        @if ($product->image_url)
+                {{-- Carrusel principal --}}
+                @if ($banners->isNotEmpty())
+                    <section aria-label="Promociones" class="bg-black">
+                        <div
+                            class="swiper mx-auto max-w-7xl"
+                            x-data="carrusel()"
+                            x-init="iniciar($el)"
+                        >
+                            <div class="swiper-wrapper">
+                                @foreach ($banners as $banner)
+                                    <div class="swiper-slide">
+                                        <a href="{{ $banner['url'] }}" class="block">
                                             <img
-                                                src="{{ $product->image_url }}"
-                                                alt="{{ $product->name }}"
-                                                class="h-full w-full object-contain p-4 transition duration-300 group-hover:scale-105"
-                                                loading="lazy"
+                                                src="{{ $banner['image'] }}"
+                                                alt="{{ $banner['alt'] }}"
+                                                {{-- Dimensiones explicitas: evitan que la pagina salte
+                                                     mientras la imagen carga. --}}
+                                                width="1536"
+                                                height="560"
+                                                loading="{{ $loop->first ? 'eager' : 'lazy' }}"
+                                                fetchpriority="{{ $loop->first ? 'high' : 'auto' }}"
+                                                class="h-auto w-full"
                                             >
-                                        @else
-                                            <span class="px-4 text-center text-2xl font-black text-zinc-300">{{ $product->category->name }}</span>
-                                        @endif
+                                        </a>
                                     </div>
-                                    <p class="text-xs font-black uppercase text-red-300">{{ $product->brand?->name }}</p>
-                                    <h3 class="mt-2 min-h-14 text-lg font-black leading-tight">{{ $product->name }}</h3>
-                                    <p class="mt-2 min-h-12 text-sm leading-6 text-zinc-400">{{ $product->short_description }}</p>
-                                    <div class="mt-4 flex items-center gap-3">
-                                        <span class="text-2xl font-black">{{ $product->price }}</span>
-                                        @if ($product->compare_at_price)
-                                            <span class="text-sm font-bold text-zinc-500 line-through">{{ $product->compare_at_price }}</span>
-                                        @endif
-                                    </div>
-                                    <button
-                                        type="button"
-                                        class="mt-4 w-full rounded bg-red-600 px-4 py-3 text-sm font-black transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-zinc-700"
-                                        @disabled(! $product->is_in_stock)
-                                        x-on:click="addToCart(@js([
-                                            'id' => $product->id,
-                                            'name' => $product->name,
-                                            'price_cents' => $product->price_cents,
-                                            'price' => $product->price,
-                                            'image_url' => $product->image_url,
-                                        ]))"
-                                    >
-                                        {{ $product->is_in_stock ? 'Agregar al carrito' : 'Agotado' }}
-                                    </button>
-                                </article>
-                            @endforeach
-                        </div>
-
-                        @if ($products->isNotEmpty())
-                            <div class="mt-12 grid gap-4 md:grid-cols-2">
-                                @foreach ($products as $product)
-                                    <article class="flex gap-4 rounded-lg border border-white/10 bg-white/[.04] p-4">
-                                        <div class="grid size-24 shrink-0 place-items-center overflow-hidden rounded bg-white text-xs font-black text-zinc-300">
-                                            @if ($product->image_url)
-                                                <img
-                                                    src="{{ $product->image_url }}"
-                                                    alt="{{ $product->name }}"
-                                                    class="h-full w-full object-contain p-2"
-                                                    loading="lazy"
-                                                >
-                                            @else
-                                                <span class="px-2 text-center">{{ $product->category->name }}</span>
-                                            @endif
-                                        </div>
-                                        <div>
-                                            <p class="text-xs font-black uppercase text-red-300">{{ $product->category->name }}</p>
-                                            <h3 class="mt-1 font-black">{{ $product->name }}</h3>
-                                            <p class="mt-1 text-sm text-zinc-400">{{ $product->short_description }}</p>
-                                            <p class="mt-2 font-black">{{ $product->price }}</p>
-                                            <button
-                                                type="button"
-                                                class="mt-3 rounded bg-red-600 px-4 py-2 text-sm font-black text-white transition hover:bg-red-500 disabled:cursor-not-allowed disabled:bg-zinc-700"
-                                                @disabled(! $product->is_in_stock)
-                                                x-on:click="addToCart(@js([
-                                                    'id' => $product->id,
-                                                    'name' => $product->name,
-                                                    'price_cents' => $product->price_cents,
-                                                    'price' => $product->price,
-                                                    'image_url' => $product->image_url,
-                                                ]))"
-                                            >
-                                                {{ $product->is_in_stock ? 'Agregar al carrito' : 'Agotado' }}
-                                            </button>
-                                        </div>
-                                    </article>
                                 @endforeach
                             </div>
 
-                            <div class="mt-8">
+                            <div class="swiper-pagination"></div>
+                            <button type="button" class="swiper-button-prev" aria-label="Promocion anterior"></button>
+                            <button type="button" class="swiper-button-next" aria-label="Promocion siguiente"></button>
+                        </div>
+                    </section>
+                @endif
+
+                {{-- Accesos rapidos por categoria --}}
+                @if ($categoryShortcuts->isNotEmpty())
+                    <section id="categorias" class="bg-[var(--color-surface-muted)]">
+                        <div class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+                            <h2 class="impact-title text-center text-3xl uppercase text-black sm:text-4xl">
+                                Compra por categoria
+                            </h2>
+                            <div class="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-8">
+                                @foreach ($categoryShortcuts as $category)
+                                    <a
+                                        href="#productos"
+                                        class="group grid place-items-center gap-2 border-2 border-transparent bg-black p-4 text-center transition hover:-translate-y-1 hover:border-[var(--color-brand)]"
+                                    >
+                                        <span class="display-title text-lg leading-tight text-white transition group-hover:text-[var(--color-brand)]">
+                                            {{ $category->name }}
+                                        </span>
+                                    </a>
+                                @endforeach
+                            </div>
+                        </div>
+                    </section>
+                @endif
+
+                @if ($featuredCategories->isNotEmpty())
+                    <section class="bg-white">
+                        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+                            <h2 class="impact-title text-3xl uppercase text-black sm:text-4xl">Categorias destacadas</h2>
+                            <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                @foreach ($featuredCategories as $category)
+                                    <article class="border-l-4 border-[var(--color-brand)] bg-[var(--color-surface-muted)] p-5 transition hover:-translate-y-1 hover:shadow-lg">
+                                        <h3 class="display-title text-2xl text-black">{{ $category->name }}</h3>
+                                        <p class="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">{{ $category->description }}</p>
+                                    </article>
+                                @endforeach
+                            </div>
+                        </div>
+                    </section>
+                @endif
+
+                @if ($featuredProducts->isNotEmpty())
+                    <section class="bg-black">
+                        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+                            <h2 class="impact-title text-3xl uppercase text-white sm:text-4xl">Los mas vendidos</h2>
+                            <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                @foreach ($featuredProducts as $product)
+                                    <x-storefront.product-card :product="$product" />
+                                @endforeach
+                            </div>
+                        </div>
+                    </section>
+                @endif
+
+                <section id="productos" class="bg-white">
+                    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+                        <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+                            <h2 class="impact-title text-3xl uppercase text-black sm:text-4xl">Todos los productos</h2>
+                            <p class="text-sm text-[var(--color-ink-soft)]">
+                                {{ $products->total() }} productos &middot; existencias y envio se confirman al cerrar el pedido.
+                            </p>
+                        </div>
+
+                        <div class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                            @foreach ($products as $product)
+                                <x-storefront.product-card :product="$product" />
+                            @endforeach
+                        </div>
+
+                        {{-- Estado vacio del filtro rapido del buscador. --}}
+                        <p
+                            data-sin-resultados
+                            hidden
+                            class="mt-10 border border-dashed border-[var(--color-border-strong)] p-8 text-center text-[var(--color-ink-soft)]"
+                        >
+                            No encontramos nada con ese termino en esta pagina.
+                            Prueba con otra palabra o revisa las demas paginas del catalogo.
+                        </p>
+
+                        @if ($products->hasPages())
+                            <div class="mt-10">
                                 {{ $products->fragment('productos')->links() }}
                             </div>
                         @endif
                     </div>
                 </section>
 
-                <section id="envios" class="bg-white text-zinc-950">
-                    <div class="mx-auto grid max-w-7xl gap-6 px-4 py-12 sm:px-6 md:grid-cols-3 lg:px-8">
-                        <div>
-                            <p class="text-sm font-black uppercase text-red-600">Compra simple</p>
-                            <h2 class="mt-2 text-3xl font-black">Atencion directa para cerrar tu pedido.</h2>
-                        </div>
-                        <div class="rounded-lg border border-zinc-200 p-5">
-                            <h3 class="font-black">Confirmacion manual</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-600">Te confirmamos existencias, total y forma de entrega antes de cobrar.</p>
-                        </div>
-                        <div class="rounded-lg border border-zinc-200 p-5">
-                            <h3 class="font-black">Listo para crecer</h3>
-                            <p class="mt-2 text-sm leading-6 text-zinc-600">El catalogo queda en base de datos para conectar panel, carrito y pagos.</p>
-                        </div>
+                {{-- Como comprar --}}
+                <section id="como-comprar" class="bg-[var(--color-surface-muted)]">
+                    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+                        <h2 class="impact-title text-center text-3xl uppercase text-black sm:text-4xl">
+                            &iquest;Como comprar?
+                        </h2>
+
+                        <ol class="mt-10 grid gap-6 md:grid-cols-3">
+                            @foreach ($howToBuy as $paso)
+                                <li class="relative border-t-4 border-[var(--color-brand)] bg-white p-6 text-center shadow-sm">
+                                    <span class="display-title mx-auto grid size-14 place-items-center rounded-full bg-black text-3xl text-white">
+                                        {{ $loop->iteration }}
+                                    </span>
+                                    <h3 class="display-title mt-4 text-2xl text-black">{{ $paso['title'] }}</h3>
+                                    <p class="mt-2 text-sm leading-6 text-[var(--color-ink-soft)]">{{ $paso['text'] }}</p>
+                                </li>
+                            @endforeach
+                        </ol>
+                    </div>
+                </section>
+
+                {{-- Quienes somos --}}
+                <section class="bg-white">
+                    <div class="mx-auto max-w-3xl px-4 py-12 text-center sm:px-6 lg:px-8">
+                        <h2 class="impact-title text-3xl uppercase text-black sm:text-4xl">
+                            Los mejores productos para tu salud
+                        </h2>
+                        <p class="mt-5 leading-7 text-[var(--color-ink-soft)]">
+                            Distribuimos las mejores marcas de suplementacion deportiva desde 2016, con
+                            asesoria real sobre cada producto y su uso para que alcances los resultados
+                            que buscas.
+                        </p>
+                        <a
+                            href="{{ route('pages.contact') }}"
+                            class="display-title mt-7 inline-block bg-[var(--color-brand)] px-8 py-3 text-xl text-white transition hover:bg-[var(--color-brand-strong)]"
+                        >
+                            Contactanos
+                        </a>
                     </div>
                 </section>
             </main>
 
-            <footer class="border-t border-white/10 bg-zinc-950">
-                <div class="mx-auto grid max-w-7xl gap-6 px-4 py-8 text-sm text-zinc-400 sm:px-6 md:grid-cols-[1fr_2fr] lg:px-8">
+            <footer class="bg-black">
+                <div class="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-3 lg:px-8">
                     <div>
-                        <p class="font-semibold text-white">Chutamax</p>
-                        <p class="mt-2">Suplementos deportivos y alimenticios.</p>
+                        <p class="display-title text-3xl text-white">Chutamax</p>
+                        <p class="mt-3 text-sm leading-6 text-white/70">
+                            {{ config('storefront.contact.address') }}
+                        </p>
+                        <p class="mt-3 text-sm text-white/70">
+                            WhatsApp: <span class="font-bold text-white">{{ config('storefront.contact.whatsapp') }}</span>
+                        </p>
                     </div>
-                    <nav class="flex flex-wrap gap-x-5 gap-y-2 md:justify-end">
-                        <a class="hover:text-white" href="{{ route('pages.contact') }}">Contacto</a>
-                        <a class="hover:text-white" href="{{ route('pages.faq') }}">FAQ</a>
-                        <a class="hover:text-white" href="{{ route('pages.shipping') }}">Envios</a>
-                        <a class="hover:text-white" href="{{ route('pages.returns') }}">Cambios y devoluciones</a>
-                        <a class="hover:text-white" href="{{ route('pages.terms') }}">Terminos</a>
-                        <a class="hover:text-white" href="{{ route('pages.privacy') }}">Privacidad</a>
+
+                    <nav aria-label="Informacion">
+                        <h2 class="display-title text-2xl text-white">Informacion</h2>
+                        <ul class="mt-3 grid gap-2 text-sm text-white/70">
+                            <li><a class="transition hover:text-[var(--color-brand)]" href="{{ route('pages.contact') }}">Contacto</a></li>
+                            <li><a class="transition hover:text-[var(--color-brand)]" href="{{ route('pages.faq') }}">Preguntas frecuentes</a></li>
+                            <li><a class="transition hover:text-[var(--color-brand)]" href="{{ route('pages.shipping') }}">Politica de envios</a></li>
+                            <li><a class="transition hover:text-[var(--color-brand)]" href="{{ route('pages.returns') }}">Cambios y devoluciones</a></li>
+                            <li><a class="transition hover:text-[var(--color-brand)]" href="{{ route('pages.terms') }}">Terminos y condiciones</a></li>
+                            <li><a class="transition hover:text-[var(--color-brand)]" href="{{ route('pages.privacy') }}">Aviso de privacidad</a></li>
+                        </ul>
                     </nav>
+
+                    <div>
+                        <h2 class="display-title text-2xl text-white">Recibe promociones</h2>
+                        <p class="mt-3 text-sm text-white/70">Te avisamos de ofertas y productos nuevos.</p>
+                        {{-- El alta al boletin se conecta en la etapa de correos. --}}
+                        <form class="mt-4 flex gap-2" x-on:submit.prevent="avisoBoletin()">
+                            <label class="sr-only" for="boletin">Tu correo electronico</label>
+                            <input
+                                id="boletin"
+                                type="email"
+                                required
+                                placeholder="Tu correo electronico"
+                                class="w-full border border-white/20 bg-white/10 px-3 py-2 text-sm text-white placeholder:text-white/50"
+                            >
+                            <button type="submit" class="display-title bg-[var(--color-brand)] px-4 text-lg text-white transition hover:bg-[var(--color-brand-strong)]">
+                                Enviar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="border-t border-white/10 py-5 text-center text-xs uppercase tracking-[0.14em] text-white/50">
+                    Chutamax {{ now()->year }} &middot; Todos los derechos reservados
                 </div>
             </footer>
 

@@ -6,6 +6,7 @@ use App\Domain\Shipping\ShippingSettingsRepository;
 use App\Models\Category;
 use App\Models\Product;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Collection;
 
 class StorefrontController extends Controller
 {
@@ -37,9 +38,40 @@ class StorefrontController extends Controller
             'featuredCategories' => $featuredCategories,
             'featuredProducts' => $featuredProducts,
             'products' => $products,
+            'categoryShortcuts' => $this->categoryShortcuts(),
+            'banners' => collect(config('storefront.banners', [])),
+            'howToBuy' => collect(config('storefront.how_to_buy', [])),
             // La tienda muestra estos valores como adelanto del total. El costo
             // que se cobra lo recalcula el servidor al confirmar el pedido.
             'shipping' => $this->shippingSettings->get(),
         ]);
+    }
+
+    /**
+     * Accesos rapidos a categorias, resueltos contra las categorias reales.
+     *
+     * Se conserva el orden configurado y se descartan las que no existen, para
+     * que la portada no ofrezca enlaces rotos.
+     *
+     * @return Collection<int, Category>
+     */
+    private function categoryShortcuts(): Collection
+    {
+        $slugs = collect(config('storefront.category_shortcuts', []));
+
+        if ($slugs->isEmpty()) {
+            return collect();
+        }
+
+        $categories = Category::query()
+            ->where('is_active', true)
+            ->whereIn('slug', $slugs)
+            ->get()
+            ->keyBy('slug');
+
+        return $slugs
+            ->map(fn (string $slug): ?Category => $categories->get($slug))
+            ->filter()
+            ->values();
     }
 }

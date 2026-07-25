@@ -1,14 +1,189 @@
 @import 'tailwindcss';
 
+/* Tipografias empaquetadas por Vite. No se piden a un servidor externo: en
+   produccion la tienda debe funcionar solo con los archivos compilados. */
+@import '@fontsource/bebas-neue/400.css';
+@import '@fontsource/anton/400.css';
+@import '@fontsource/roboto/400.css';
+@import '@fontsource/roboto/500.css';
+@import '@fontsource/roboto/700.css';
+
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source "../**/*.blade.php";
 @source "../**/*.js";
-@source "../**/*.vue";
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-sans: Roboto, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji';
+    --font-display: 'Bebas Neue', ui-sans-serif, system-ui, sans-serif;
+    --font-impact: Anton, 'Bebas Neue', ui-sans-serif, sans-serif;
+}
+
+/*
+|--------------------------------------------------------------------------
+| Design tokens del tema
+|--------------------------------------------------------------------------
+|
+| Los componentes leen estas variables y nunca un color escrito a mano, para
+| que cambiar de tema no obligue a tocar plantillas. El tema activo se aplica
+| con un atributo data-theme en el elemento raiz.
+|
+| "Performance rojo" reproduce la identidad de la tienda: negro, blanco, grises
+| y el rojo de marca.
+|
+*/
+:root,
+:root[data-theme='performance'] {
+    --color-brand: #bf081f;
+    --color-brand-strong: #96061a;
+    --color-brand-soft: #fdecee;
+
+    --color-ink: #333333;
+    --color-ink-soft: #54595f;
+    --color-ink-inverse: #ffffff;
+
+    --color-surface: #ffffff;
+    --color-surface-muted: #eeeeee;
+    --color-surface-inverse: #000000;
+
+    --color-border: #e2e2e2;
+    --color-border-strong: #cccccc;
+
+    --color-success: #1f7a44;
+    --color-warning: #b45309;
+    --color-danger: #bf081f;
+}
+
+:root[data-theme='electric'] {
+    --color-brand: #0ea5e9;
+    --color-brand-strong: #0369a1;
+    --color-brand-soft: #e0f2fe;
+
+    --color-ink: #0f172a;
+    --color-ink-soft: #475569;
+    --color-ink-inverse: #ffffff;
+
+    --color-surface: #ffffff;
+    --color-surface-muted: #eef2f7;
+    --color-surface-inverse: #041024;
+
+    --color-border: #d8e2ee;
+    --color-border-strong: #b6c6d9;
+
+    --color-success: #15803d;
+    --color-warning: #b45309;
+    --color-danger: #dc2626;
+}
+
+:root[data-theme='premium'] {
+    --color-brand: #b08d3f;
+    --color-brand-strong: #8a6c28;
+    --color-brand-soft: #faf5e8;
+
+    --color-ink: #23201b;
+    --color-ink-soft: #5b554a;
+    --color-ink-inverse: #fffdf7;
+
+    --color-surface: #fffdf7;
+    --color-surface-muted: #f2ede1;
+    --color-surface-inverse: #14120f;
+
+    --color-border: #e4dcc9;
+    --color-border-strong: #cdc0a4;
+
+    --color-success: #4d7c0f;
+    --color-warning: #a16207;
+    --color-danger: #b91c1c;
+}
+
+:root[data-theme='fresh'] {
+    --color-brand: #059669;
+    --color-brand-strong: #047857;
+    --color-brand-soft: #ecfdf5;
+
+    --color-ink: #1f2937;
+    --color-ink-soft: #4b5563;
+    --color-ink-inverse: #ffffff;
+
+    --color-surface: #ffffff;
+    --color-surface-muted: #f1f5f4;
+    --color-surface-inverse: #12403a;
+
+    --color-border: #dce5e2;
+    --color-border-strong: #bccdc7;
+
+    --color-success: #047857;
+    --color-warning: #b45309;
+    --color-danger: #b91c1c;
+}
+
+@layer base {
+    body {
+        background-color: var(--color-surface);
+        color: var(--color-ink);
+    }
+
+    /* El foco visible no se quita nunca: es la unica pista de posicion para
+       quien navega con teclado. */
+    :focus-visible {
+        outline: 3px solid var(--color-brand);
+        outline-offset: 2px;
+    }
+}
+
+@layer components {
+    .display-title {
+        font-family: var(--font-display);
+        letter-spacing: 0.02em;
+        line-height: 1;
+    }
+
+    .impact-title {
+        font-family: var(--font-impact);
+        letter-spacing: 0.01em;
+        line-height: 1.05;
+    }
+
+    /* Botones de SweetAlert2. La libreria se configura sin estilos propios para
+       que las alertas usen los tokens del tema activo. */
+    .swal-confirm,
+    .swal-cancel,
+    .swal-deny {
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        letter-spacing: 0.03em;
+        padding: 0.6rem 1.5rem;
+        border-radius: 0.25rem;
+        margin: 0 0.25rem;
+        cursor: pointer;
+    }
+
+    .swal-confirm {
+        background: var(--color-brand);
+        color: var(--color-ink-inverse);
+    }
+
+    .swal-cancel {
+        background: var(--color-surface-muted);
+        color: var(--color-ink);
+    }
+
+    .swal-deny {
+        background: var(--color-surface-inverse);
+        color: var(--color-ink-inverse);
+    }
+
+    /* Marcador de posicion cuando una imagen de producto no carga: mantiene la
+       cuadricula alineada en lugar de dejar un hueco. */
+    .media-placeholder {
+        background:
+            linear-gradient(135deg, var(--color-surface-muted) 25%, transparent 25%) -12px 0,
+            linear-gradient(225deg, var(--color-surface-muted) 25%, transparent 25%) -12px 0,
+            linear-gradient(315deg, var(--color-surface-muted) 25%, transparent 25%),
+            linear-gradient(45deg, var(--color-surface-muted) 25%, transparent 25%);
+        background-size: 24px 24px;
+        background-color: var(--color-surface);
+    }
 }
 
 [x-cloak] {
@@ -59,7 +234,17 @@
     animation-delay: 135ms;
 }
 
+/* Respeta a quien pidio menos movimiento en su sistema. */
 @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+
     .checkout-panel,
     .checkout-section {
         animation: none;
