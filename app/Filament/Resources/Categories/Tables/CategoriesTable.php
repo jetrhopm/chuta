@@ -28,9 +28,10 @@ class CategoriesTable
                 IconColumn::make('is_featured')
                     ->label('Inicio')
                     ->boolean(),
+                // Un ToggleColumn ya es booleano por definicion: llamar a
+                // ->boolean() aqui lanza BadMethodCallException en Filament 5.
                 ToggleColumn::make('is_active')
-                    ->label('Activo')
-                    ->boolean(),
+                    ->label('Activo'),
                 TextColumn::make('sort_order')
                     ->label('Orden')
                     ->numeric()

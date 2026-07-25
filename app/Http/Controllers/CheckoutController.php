@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Inventory\Actions\DeductStockForOrder;
+use App\Domain\Inventory\Exceptions\InsufficientStock;
 use App\Models\Order;
 use App\Models\Product;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -13,6 +16,8 @@ use Illuminate\Validation\ValidationException;
 
 class CheckoutController extends Controller
 {
+    public function __construct(private readonly DeductStockForOrder $deductStock) {}
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
@@ -57,7 +62,57 @@ class CheckoutController extends Controller
             ]);
         }
 
-        $order = DB::transaction(function () use ($validated, $cartItems, $products): Order {
+        // Aviso temprano con un mensaje util. No sustituye a la comprobacion
+        // real: entre esta lectura y el descuento pueden entrar otras compras,
+        // y de eso se encarga el bloqueo de fila dentro de la transaccion.
+        $this->guardAgainstUnavailableQuantities($cartItems, $products);
+
+        try {
+            $order = $this->createOrder($validated, $cartItems, $products);
+        } catch (InsufficientStock $exception) {
+            // El pedido ya se deshizo con la transaccion. Solo queda contarlo en
+            // terminos que el cliente entienda, sin tecnicismos.
+            throw ValidationException::withMessages([
+                'cart_payload' => $exception->customerMessage(),
+            ]);
+        }
+
+        return redirect()
+            ->route('storefront.home')
+            ->with('checkout_order_code', $order->code);
+    }
+
+    /**
+     * @param  Collection<int, array{id: int, quantity: int}>  $cartItems
+     * @param  Collection<int, Product>  $products
+     */
+    private function guardAgainstUnavailableQuantities($cartItems, $products): void
+    {
+        foreach ($cartItems as $item) {
+            $product = $products[$item['id']];
+
+            if (! $product->canFulfill($item['quantity'])) {
+                throw ValidationException::withMessages([
+                    'cart_payload' => (new InsufficientStock(
+                        $product,
+                        $item['quantity'],
+                        (int) $product->availableQuantity(),
+                    ))->customerMessage(),
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @param  Collection<int, array{id: int, quantity: int}>  $cartItems
+     * @param  Collection<int, Product>  $products
+     *
+     * @throws InsufficientStock
+     */
+    private function createOrder(array $validated, $cartItems, $products): Order
+    {
+        return DB::transaction(function () use ($validated, $cartItems, $products): Order {
             $subtotalCents = $cartItems->sum(function (array $item) use ($products): int {
                 return $products[$item['id']]->price_cents * $item['quantity'];
             });
@@ -99,12 +154,14 @@ class CheckoutController extends Controller
                 ]);
             }
 
+            // Dentro de la misma transaccion: si aqui falta inventario, el
+            // pedido no llega a existir. Cada descuento vuelve a leer el
+            // producto con la fila bloqueada, de modo que dos compras
+            // simultaneas no pueden vender la misma ultima pieza.
+            $this->deductStock->handle($order->load('items.product'));
+
             return $order;
         });
-
-        return redirect()
-            ->route('storefront.home')
-            ->with('checkout_order_code', $order->code);
     }
 
     private function makeOrderCode(): string

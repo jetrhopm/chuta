@@ -63,10 +63,30 @@ class ProductForm
                             ->numeric()
                             ->minValue(0),
                         TextInput::make('stock')
-                            ->required()
+                            ->label('Existencias')
+                            // Solo al crear. Despues las existencias se mueven
+                            // con "Ajustar existencias", que deja constancia en
+                            // el historial; editarlas aqui las cambiaria sin
+                            // dejar rastro de quien lo hizo ni por que.
+                            ->helperText(fn (string $operation): string => $operation === 'create'
+                                ? 'Existencias iniciales.'
+                                : 'Para cambiarlas usa "Ajustar existencias" en el listado, para que quede en el historial.')
+                            ->disabled(fn (string $operation): bool => $operation !== 'create')
+                            ->dehydrated(fn (string $operation): bool => $operation === 'create')
+                            ->required(fn (string $operation): bool => $operation === 'create')
                             ->numeric()
                             ->minValue(0)
                             ->default(0),
+                        TextInput::make('stock_minimum')
+                            ->label('Existencias minimas')
+                            ->helperText('Avisa cuando queden estas piezas o menos. Cero desactiva el aviso.')
+                            ->numeric()
+                            ->minValue(0)
+                            ->default(0),
+                        Toggle::make('track_inventory')
+                            ->label('Llevar inventario')
+                            ->helperText('Si se desactiva, el producto se puede vender sin tope.')
+                            ->default(true),
                         Toggle::make('is_featured')
                             ->label('Destacado')
                             ->required(),

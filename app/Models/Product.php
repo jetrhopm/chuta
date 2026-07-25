@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
@@ -24,6 +25,8 @@ class Product extends Model
         'price_cents',
         'compare_at_price_cents',
         'stock',
+        'stock_minimum',
+        'track_inventory',
         'is_featured',
         'is_active',
     ];
@@ -34,6 +37,8 @@ class Product extends Model
             'price_cents' => 'integer',
             'compare_at_price_cents' => 'integer',
             'stock' => 'integer',
+            'stock_minimum' => 'integer',
+            'track_inventory' => 'boolean',
             'is_featured' => 'boolean',
             'is_active' => 'boolean',
         ];
@@ -49,9 +54,51 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
+    public function inventoryMovements(): HasMany
+    {
+        return $this->hasMany(InventoryMovement::class)->latest('created_at');
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->where('is_active', true);
+    }
+
+    /**
+     * Productos que alcanzaron su umbral de aviso.
+     *
+     * Se excluyen los que no se llevan por existencias y los que tienen el
+     * umbral en cero, porque en esos casos el aviso no significa nada.
+     */
+    public function scopeLowStock(Builder $query): Builder
+    {
+        return $query->where('track_inventory', true)
+            ->where('stock_minimum', '>', 0)
+            ->whereColumn('stock', '<=', 'stock_minimum');
+    }
+
+    /**
+     * Piezas que se pueden vender ahora mismo.
+     *
+     * Un producto que no se lleva por existencias no tiene tope.
+     */
+    public function availableQuantity(): ?int
+    {
+        return $this->track_inventory ? max(0, $this->stock) : null;
+    }
+
+    public function canFulfill(int $quantity): bool
+    {
+        $available = $this->availableQuantity();
+
+        return $available === null || $available >= $quantity;
+    }
+
+    public function hasLowStock(): bool
+    {
+        return $this->track_inventory
+            && $this->stock_minimum > 0
+            && $this->stock <= $this->stock_minimum;
     }
 
     protected function price(): Attribute
@@ -85,6 +132,7 @@ class Product extends Model
 
     protected function isInStock(): Attribute
     {
-        return Attribute::get(fn (): bool => $this->stock > 0);
+        // Un producto que no se lleva por existencias siempre esta disponible.
+        return Attribute::get(fn (): bool => ! $this->track_inventory || $this->stock > 0);
     }
 }

@@ -12,6 +12,14 @@ para invitados.
 | Componente | Version usada | Nota |
 |---|---|---|
 | PHP | 8.2.12 | Extensiones necesarias: `bcmath`, `curl`, `fileinfo`, `gd`, `intl`, `mbstring`, `openssl`, `pdo_mysql`, `zip` |
+
+`intl` no es opcional: el panel formatea importes con `Number::currency()`, que
+sin esa extension lanza una excepcion y deja las pantallas de productos y
+pedidos en error 500. Si acabas de habilitarla en `php.ini`, **reinicia Apache**:
+el modulo de PHP lee su configuracion al arrancar, asi que un servidor que ya
+estaba corriendo sigue sin la extension. Las pruebas usan PHP de linea de
+comandos y no avisan de esto, porque ahi la configuracion se lee en cada
+ejecucion.
 | MySQL | 8.0.41 | Tambien sirve MariaDB compatible con Hostinger |
 | Composer | 2.x | |
 | Node | 22 o superior | Solo para compilar assets; produccion no lo necesita |
@@ -120,6 +128,37 @@ php vendor/bin/pint --test
 valor con subcarpeta, Laravel lo antepondria a cada peticion de prueba y
 ninguna ruta coincidiria.
 
+## Inventario
+
+Las existencias solo se modifican a traves de
+`App\Domain\Inventory\Actions\RecordInventoryMovement`. Esa accion relee el
+producto con la fila bloqueada, valida que el resultado no quede en negativo,
+actualiza la columna y escribe el movimiento en el historial, todo en una
+transaccion. Nadie deberia escribir `stock` a mano: es lo que garantiza que la
+columna y el historial no puedan contradecirse.
+
+El bloqueo de fila es lo que evita la sobreventa. Sin el, dos compras
+simultaneas leerian las mismas existencias y venderian dos veces la ultima
+pieza; con el, la segunda espera a que la primera termine. Hay una prueba que
+falla si alguien quita el `lockForUpdate`.
+
+El descuento ocurre dentro de la misma transaccion que crea el pedido, asi que
+un producto agotado a media compra deshace el pedido completo en lugar de
+dejarlo guardado sin existencias.
+
+El historial es inmutable: el modelo `InventoryMovement` lanza una excepcion al
+intentar modificarlo o borrarlo. Una correccion se hace registrando un ajuste en
+sentido contrario, no reescribiendo el pasado.
+
+Cancelar un pedido repone lo que ese pedido habia descontado, y solo una vez:
+cancelar dos veces no puede inflar las existencias con piezas que no existen.
+
+**Reservas durante el pago.** El documento de requisitos las pide, y todavia no
+estan. Hoy el pedido descuenta en firme al confirmarse porque no existe una
+pasarela de pago y, por tanto, no hay ventana de pago que reservar. Implementar
+el ciclo de reserva ahora dejaria codigo que nada ejercita. Se hara junto con los
+pagos, cuando haya un pago pendiente real que pueda expirar.
+
 ## Credenciales locales
 
 Las cuentas iniciales se crean con los seeders y son exclusivamente para el
@@ -140,8 +179,14 @@ entorno local. En produccion debe exigirse el cambio de contraseña.
       acceso total, cuentas desactivables, correo normalizado, recuperacion de
       contrasena, limite de intentos, registro de ultimo acceso y cambio
       obligatorio de la contrasena inicial en produccion.
-- [ ] Etapa 3 — Catalogo.
-- [ ] Etapa 4 — Inventario y reservas.
+- [ ] Etapa 3 — Catalogo. Hay marcas, categorias, productos y sus pantallas del
+      panel. Faltan variantes, etiquetas, imagenes multiples y datos SEO.
+- [x] Etapa 4 — Inventario: historial inmutable de movimientos, descuento
+      atomico al confirmar un pedido con bloqueo de fila para evitar sobreventa,
+      reposicion controlada al cancelar o devolver, aviso de existencias bajas y
+      ajuste manual trazable desde el panel. Las reservas durante el pago se
+      dejan para la etapa de pagos, cuando exista una ventana de pago que
+      reservar (ver [Inventario](#inventario)).
 - [ ] Etapa 5 — Temas, contenido y escaparate.
 - [ ] Etapa 6 — Busqueda, carrito y promociones.
 - [ ] Etapa 7 — SEPOMEX, envios y checkout.

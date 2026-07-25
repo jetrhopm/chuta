@@ -2,10 +2,18 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Domain\Inventory\Actions\RestockOrder;
+use App\Domain\Inventory\Enums\InventoryMovementType;
+use App\Models\Order;
+use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\DB;
 
 class OrdersTable
 {
@@ -99,9 +107,56 @@ class OrdersTable
                     ]),
             ])
             ->recordActions([
+                self::cancelAction(),
                 EditAction::make(),
             ])
             ->toolbarActions([])
             ->defaultSort('created_at', 'desc');
+    }
+
+    /**
+     * Cancela el pedido y repone su inventario.
+     *
+     * La reposicion es controlada: solo devuelve lo que de verdad se habia
+     * descontado y nunca dos veces el mismo pedido, asi que cancelar por error
+     * no puede inflar las existencias.
+     */
+    private static function cancelAction(): Action
+    {
+        return Action::make('cancelar')
+            ->label('Cancelar')
+            ->icon(Heroicon::OutlinedXCircle)
+            ->color('danger')
+            ->requiresConfirmation()
+            ->modalHeading('Cancelar pedido')
+            ->modalDescription('Se repondra al inventario lo que este pedido habia descontado. La accion queda registrada.')
+            ->modalSubmitActionLabel('Si, cancelar el pedido')
+            ->visible(fn (Order $record): bool => $record->status !== 'cancelled')
+            ->authorize(fn (Order $record): bool => auth()->user()->can('cancel', $record))
+            ->schema([
+                Textarea::make('reason')
+                    ->label('Motivo')
+                    ->helperText('Queda en el historial de inventario.')
+                    ->required()
+                    ->maxLength(255),
+            ])
+            ->action(function (Order $record, array $data): void {
+                DB::transaction(function () use ($record, $data): void {
+                    app(RestockOrder::class)->handle(
+                        order: $record->load('items.product'),
+                        type: InventoryMovementType::Cancellation,
+                        reason: $data['reason'],
+                        user: auth()->user(),
+                    );
+
+                    $record->forceFill(['status' => 'cancelled'])->save();
+                });
+
+                Notification::make()
+                    ->title('Pedido cancelado')
+                    ->body('El inventario quedo repuesto.')
+                    ->success()
+                    ->send();
+            });
     }
 }
