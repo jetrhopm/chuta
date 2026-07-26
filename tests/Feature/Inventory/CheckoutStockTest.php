@@ -10,7 +10,7 @@ use App\Models\Product;
 it('descuenta el inventario al confirmar un pedido', function () {
     $product = Product::factory()->withStock(10)->create();
 
-    enviarCheckout([[$product, 3]])->assertRedirect('/');
+    enviarCheckout([[$product, 3]])->assertSessionHasNoErrors();
 
     expect($product->fresh()->stock)->toBe(7);
 
@@ -51,7 +51,7 @@ it('explica al cliente cuantas piezas quedan sin tecnicismos', function () {
 it('permite agotar justo las ultimas piezas', function () {
     $product = Product::factory()->withStock(4)->create();
 
-    enviarCheckout([[$product, 4]])->assertRedirect('/');
+    enviarCheckout([[$product, 4]])->assertSessionHasNoErrors();
 
     expect($product->fresh()->stock)->toBe(0)
         ->and(Order::count())->toBe(1);
@@ -75,7 +75,7 @@ it('no guarda el pedido si un renglon posterior se queda sin existencias', funct
 it('no descuenta nada de un producto que no se lleva por existencias', function () {
     $product = Product::factory()->untracked()->create();
 
-    enviarCheckout([[$product, 25]])->assertRedirect('/');
+    enviarCheckout([[$product, 25]])->assertSessionHasNoErrors();
 
     expect(Order::count())->toBe(1)
         ->and($product->fresh()->stock)->toBe(0)

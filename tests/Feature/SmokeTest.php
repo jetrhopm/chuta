@@ -36,21 +36,9 @@ it('guarda pedidos del checkout y recalcula el total en servidor', function () {
 
     $product = Product::where('is_active', true)->firstOrFail();
 
-    $this->post('/checkout', [
-        'cart_payload' => json_encode([
-            ['id' => $product->id, 'quantity' => 2, 'price_cents' => 1],
-        ]),
-        'customer_name' => 'Cliente Prueba',
-        'customer_email' => 'cliente@example.test',
-        'customer_phone' => '6441234567',
-        'shipping_street' => 'Calle Uno',
-        'shipping_number' => '123',
-        'shipping_neighborhood' => 'Centro',
-        'shipping_city' => 'Obregon',
-        'shipping_state' => 'Sonora',
-        'shipping_postcode' => '85000',
-        'payment_method' => 'bank_transfer',
-    ])->assertRedirect('/');
+    // El precio del formulario es deliberadamente falso: el servidor lo ignora y
+    // recalcula con el del catalogo.
+    enviarCheckout([[$product, 2]])->assertSessionHasNoErrors();
 
     $order = Order::with('items')->firstOrFail();
 

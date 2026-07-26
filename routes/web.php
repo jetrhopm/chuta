@@ -1,6 +1,10 @@
 <?php
 
 use App\Http\Controllers\CheckoutController;
+use App\Http\Controllers\OrderTrackingController;
+use App\Http\Controllers\PaymentReceiptController;
+use App\Http\Controllers\PaymentReturnController;
+use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PostalCodeController;
 use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +19,37 @@ Route::get('/codigo-postal/{postcode}', PostalCodeController::class)
     ->whereNumber('postcode')
     ->middleware('throttle:60,1')
     ->name('postal-code.show');
+
+/*
+|--------------------------------------------------------------------------
+| Pagos
+|--------------------------------------------------------------------------
+*/
+
+// Vuelta del cliente desde la pantalla del proveedor. No se cree nada de lo que
+// llega en la URL: el estado se pregunta al proveedor.
+Route::get('/pago/retorno/{code}', [PaymentReturnController::class, 'returned'])->name('payments.return');
+Route::get('/pago/cancelado/{code}', [PaymentReturnController::class, 'cancelled'])->name('payments.cancelled');
+
+// Avisos de los proveedores. Sin CSRF porque no viene de un formulario nuestro;
+// lo que autentica el aviso es la firma que verifica cada adaptador.
+Route::post('/webhooks/pagos/{provider}', PaymentWebhookController::class)
+    ->middleware('throttle:120,1')
+    ->name('payments.webhook');
+
+// Consulta del pedido. La ruta va firmada para que nadie vea pedidos ajenos
+// probando folios.
+Route::get('/pedido/{code}', [OrderTrackingController::class, 'show'])
+    ->middleware('signed')
+    ->name('orders.show');
+
+Route::post('/pedido/{code}/comprobante', [PaymentReceiptController::class, 'store'])
+    ->middleware('throttle:10,1')
+    ->name('receipts.store');
+
+Route::get('/comprobante/{receipt}', [PaymentReceiptController::class, 'show'])
+    ->middleware('auth')
+    ->name('receipts.show');
 
 Route::view('/contacto', 'storefront.pages.contact')->name('pages.contact');
 Route::view('/preguntas-frecuentes', 'storefront.pages.faq')->name('pages.faq');

@@ -34,7 +34,7 @@ it('aplica el bloqueo de fila al mover inventario', function () {
 it('repone el inventario al cancelar un pedido', function () {
     $product = Product::factory()->withStock(10)->create();
 
-    enviarCheckout([[$product, 4]])->assertRedirect('/');
+    enviarCheckout([[$product, 4]])->assertSessionHasNoErrors();
     expect($product->fresh()->stock)->toBe(6);
 
     $order = Order::with('items.product')->firstOrFail();
@@ -52,7 +52,7 @@ it('repone el inventario al cancelar un pedido', function () {
 it('no repone dos veces el mismo pedido', function () {
     $product = Product::factory()->withStock(10)->create();
 
-    enviarCheckout([[$product, 4]])->assertRedirect('/');
+    enviarCheckout([[$product, 4]])->assertSessionHasNoErrors();
 
     $order = Order::with('items.product')->firstOrFail();
 
@@ -68,7 +68,7 @@ it('no repone dos veces el mismo pedido', function () {
 it('registra una devolucion como tal y no como cancelacion', function () {
     $product = Product::factory()->withStock(10)->create();
 
-    enviarCheckout([[$product, 2]])->assertRedirect('/');
+    enviarCheckout([[$product, 2]])->assertSessionHasNoErrors();
 
     $order = Order::with('items.product')->firstOrFail();
 
@@ -86,7 +86,7 @@ it('registra una devolucion como tal y no como cancelacion', function () {
 it('no repone un pedido que nunca descontó existencias', function () {
     $product = Product::factory()->untracked()->create();
 
-    enviarCheckout([[$product, 3]])->assertRedirect('/');
+    enviarCheckout([[$product, 3]])->assertSessionHasNoErrors();
 
     $order = Order::with('items.product')->firstOrFail();
 

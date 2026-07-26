@@ -17,7 +17,7 @@ it('cobra la tarifa configurada en el panel y no la del entorno', function () {
 
     $product = Product::factory()->withStock(10)->create(['price_cents' => 20000]);
 
-    enviarCheckout([[$product, 1]])->assertRedirect('/');
+    enviarCheckout([[$product, 1]])->assertSessionHasNoErrors();
 
     $order = Order::firstOrFail();
 
@@ -33,7 +33,7 @@ it('aplica el envio gratis del umbral configurado', function () {
 
     $product = Product::factory()->withStock(10)->create(['price_cents' => 50000]);
 
-    enviarCheckout([[$product, 1]])->assertRedirect('/');
+    enviarCheckout([[$product, 1]])->assertSessionHasNoErrors();
 
     $order = Order::firstOrFail();
 
@@ -46,7 +46,7 @@ it('ignora un costo de envio enviado desde el navegador', function () {
 
     // Aunque el formulario traiga un envio de cero, el servidor recalcula.
     enviarCheckout([[$product, 1]], ['shipping_cents' => 0, 'total_cents' => 20000])
-        ->assertRedirect('/');
+        ->assertSessionHasNoErrors();
 
     $order = Order::firstOrFail();
 

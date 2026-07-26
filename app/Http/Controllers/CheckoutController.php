@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Domain\Inventory\Actions\DeductStockForOrder;
 use App\Domain\Inventory\Exceptions\InsufficientStock;
+use App\Domain\Payments\Actions\StartPayment;
+use App\Domain\Payments\Enums\PaymentProvider;
+use App\Domain\Payments\PaymentGatewayRegistry;
 use App\Domain\Shipping\Actions\CalculateShipping;
 use App\Models\Order;
 use App\Models\Product;
@@ -20,6 +23,8 @@ class CheckoutController extends Controller
     public function __construct(
         private readonly DeductStockForOrder $deductStock,
         private readonly CalculateShipping $calculateShipping,
+        private readonly StartPayment $startPayment,
+        private readonly PaymentGatewayRegistry $registry,
     ) {}
 
     public function store(Request $request): RedirectResponse
@@ -36,7 +41,9 @@ class CheckoutController extends Controller
             'shipping_state' => ['required', 'string', 'max:255'],
             'shipping_postcode' => ['required', 'string', 'regex:/^\d{5}$/'],
             'shipping_reference' => ['nullable', 'string', 'max:1000'],
-            'payment_method' => ['required', Rule::in(['bank_transfer', 'cash_on_delivery', 'card_on_delivery'])],
+            // Solo los metodos que de verdad estan configurados. Un proveedor sin
+            // credenciales no se puede elegir, asi que no llega a fallar despues.
+            'payment_method' => ['required', Rule::in($this->registry->availableProviderValues())],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -81,8 +88,22 @@ class CheckoutController extends Controller
             ]);
         }
 
+        // El cobro se pide fuera de la transaccion del pedido a proposito: una
+        // llamada a un proveedor externo puede tardar, y mantener abierta la
+        // transaccion que bloquea filas de inventario mientras se espera dejaria
+        // el catalogo trabado para todos los demas.
+        $attempt = $this->startPayment->handle(
+            $order,
+            PaymentProvider::from($validated['payment_method']),
+        );
+
+        // Los proveedores redireccionados cobran en su propia pantalla.
+        if ($attempt->checkout_url !== null) {
+            return redirect()->away($attempt->checkout_url);
+        }
+
         return redirect()
-            ->route('storefront.home')
+            ->to($order->trackingUrl())
             ->with('checkout_order_code', $order->code);
     }
 

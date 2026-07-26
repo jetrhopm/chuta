@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use App\Domain\Payments\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Facades\URL;
 use RuntimeException;
 
 class Order extends Model
@@ -39,6 +41,10 @@ class Order extends Model
             'subtotal_cents' => 'integer',
             'shipping_cents' => 'integer',
             'total_cents' => 'integer',
+            // El estado del pago va aparte del estado del pedido: un pedido puede
+            // estar en preparacion con el pago aprobado, o entregado con un
+            // contracargo posterior.
+            'payment_status' => PaymentStatus::class,
         ];
     }
 
@@ -63,6 +69,36 @@ class Order extends Model
     public function inventoryMovements(): HasMany
     {
         return $this->hasMany(InventoryMovement::class);
+    }
+
+    public function paymentAttempts(): HasMany
+    {
+        return $this->hasMany(PaymentAttempt::class)->latest('id');
+    }
+
+    public function receipts(): HasMany
+    {
+        return $this->hasMany(PaymentReceipt::class)->latest('id');
+    }
+
+    /**
+     * Ultimo intento de pago, que es el que la tienda muestra al cliente.
+     */
+    public function currentPaymentAttempt(): ?PaymentAttempt
+    {
+        return $this->paymentAttempts()->first();
+    }
+
+    /**
+     * Direccion firmada para consultar el pedido.
+     *
+     * Se usa una firma y no el folio a secas para que nadie pueda ver pedidos
+     * ajenos probando folios: el enlace solo funciona con la firma que emite este
+     * servidor.
+     */
+    public function trackingUrl(): string
+    {
+        return URL::signedRoute('orders.show', ['code' => $this->code]);
     }
 
     protected function total(): Attribute

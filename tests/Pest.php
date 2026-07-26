@@ -1,5 +1,8 @@
 <?php
 
+use App\Domain\Payments\Enums\PaymentProvider;
+use App\Domain\Payments\PaymentGatewayRegistry;
+use App\Domain\Payments\Settings\GatewaySettings;
 use App\Models\Product;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
@@ -55,6 +58,18 @@ function pngDePrueba(int $ancho = 8, int $alto = 8): string
  */
 function enviarCheckout(array $lineas, array $sobreescribe = []): TestResponse
 {
+    // El checkout solo acepta metodos de pago configurados, asi que el ayudante
+    // deja listo el de transferencia. Es el unico que no necesita credenciales de
+    // terceros, y sin el ninguna prueba de checkout podria pasar la validacion.
+    if (! app(PaymentGatewayRegistry::class)->isAvailable(PaymentProvider::BankTransfer)) {
+        app(GatewaySettings::class)->save(PaymentProvider::BankTransfer, [
+            'enabled' => true,
+            'bank' => 'Banco de prueba',
+            'account_holder' => 'Tienda de prueba',
+            'clabe' => '012345678901234567',
+        ]);
+    }
+
     $payload = array_map(
         fn (array $linea): array => ['id' => $linea[0]->id, 'quantity' => $linea[1]],
         $lineas,
