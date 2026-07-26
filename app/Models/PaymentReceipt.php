@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 
 /**
  * Comprobante de una transferencia bancaria.
@@ -39,6 +40,18 @@ class PaymentReceipt extends Model
             'size_bytes' => 'integer',
             'reviewed_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Un comprobante es la evidencia de un pago y no se borra.
+        //
+        // La invariante vive aqui y no solo en la Policy porque el
+        // superadministrador se salta cualquier Policy por el Gate::before de
+        // AuthServiceProvider.
+        static::deleting(function (self $receipt): void {
+            throw new RuntimeException('Los comprobantes no se eliminan: son la evidencia de un pago.');
+        });
     }
 
     public function order(): BelongsTo
