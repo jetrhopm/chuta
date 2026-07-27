@@ -4,6 +4,8 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $title ?? 'Chutamax' }}</title>
+        {{-- Cada pagina agrega aqui sus datos para buscadores y para compartir. --}}
+        @stack('head')
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     {{-- Layout de las paginas sueltas: legales, seguimiento de pedido y avisos.

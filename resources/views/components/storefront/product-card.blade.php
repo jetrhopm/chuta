@@ -56,7 +56,14 @@
         @endif
 
         <h3 class="display-title mt-2 text-xl text-[var(--color-ink)]">
-            {{ $product->name }}
+            {{-- El enlace envuelve el titulo y no la tarjeta entera para no
+                 anidar el boton de agregar dentro de un enlace. --}}
+            <a
+                href="{{ route('products.show', ['slug' => $product->slug]) }}"
+                class="transition hover:text-[var(--color-brand)]"
+            >
+                {{ $product->name }}
+            </a>
         </h3>
 
         <div class="mt-3 flex flex-wrap items-baseline gap-2">

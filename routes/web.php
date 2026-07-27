@@ -6,11 +6,14 @@ use App\Http\Controllers\PaymentReceiptController;
 use App\Http\Controllers\PaymentReturnController;
 use App\Http\Controllers\PaymentWebhookController;
 use App\Http\Controllers\PostalCodeController;
+use App\Http\Controllers\ProductController;
 use App\Http\Controllers\StorefrontController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', StorefrontController::class)->name('storefront.home');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
+
+Route::get('/producto/{slug}', [ProductController::class, 'show'])->name('products.show');
 
 // Consulta de codigos postales del checkout. Lleva limite de peticiones porque
 // es publica y se llama a cada tecla: sin el, serviria para recorrer el catalogo
