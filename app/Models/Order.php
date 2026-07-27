@@ -20,6 +20,8 @@ class Order extends Model
         'payment_method',
         'payment_status',
         'subtotal_cents',
+        'discount_cents',
+        'discount_breakdown',
         'shipping_cents',
         'total_cents',
         'customer_name',
@@ -39,6 +41,10 @@ class Order extends Model
     {
         return [
             'subtotal_cents' => 'integer',
+            'discount_cents' => 'integer',
+            // Fotografia inmutable de los descuentos aplicados: no se recalcula,
+            // asi que modificar la promocion despues no cambia este pedido.
+            'discount_breakdown' => 'array',
             'shipping_cents' => 'integer',
             'total_cents' => 'integer',
             // El estado del pago va aparte del estado del pedido: un pedido puede

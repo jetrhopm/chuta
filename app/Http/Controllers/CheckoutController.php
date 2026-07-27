@@ -8,6 +8,10 @@ use App\Domain\Notifications\OrderNotifier;
 use App\Domain\Payments\Actions\StartPayment;
 use App\Domain\Payments\Enums\PaymentProvider;
 use App\Domain\Payments\PaymentGatewayRegistry;
+use App\Domain\Promotions\Actions\CalculateDiscounts;
+use App\Domain\Promotions\Actions\RecordPromotionUsage;
+use App\Domain\Promotions\Data\CartLine;
+use App\Domain\Promotions\Data\DiscountContext;
 use App\Domain\Shipping\Actions\CalculateShipping;
 use App\Models\Order;
 use App\Models\Product;
@@ -27,6 +31,8 @@ class CheckoutController extends Controller
         private readonly StartPayment $startPayment,
         private readonly PaymentGatewayRegistry $registry,
         private readonly OrderNotifier $notifier,
+        private readonly CalculateDiscounts $calculateDiscounts,
+        private readonly RecordPromotionUsage $recordPromotionUsage,
     ) {}
 
     public function store(Request $request): RedirectResponse
@@ -43,6 +49,9 @@ class CheckoutController extends Controller
             'shipping_state' => ['required', 'string', 'max:255'],
             'shipping_postcode' => ['required', 'string', 'regex:/^\d{5}$/'],
             'shipping_reference' => ['nullable', 'string', 'max:1000'],
+            // Solo el codigo viaja desde el navegador. El importe del descuento lo
+            // decide el motor en el servidor.
+            'coupon_code' => ['nullable', 'string', 'max:60'],
             // Solo los metodos que de verdad estan configurados. Un proveedor sin
             // credenciales no se puede elegir, asi que no llega a fallar despues.
             'payment_method' => ['required', Rule::in($this->registry->availableProviderValues())],
@@ -149,11 +158,31 @@ class CheckoutController extends Controller
                 return $products[$item['id']]->price_cents * $item['quantity'];
             });
 
+            // Los descuentos se recalculan aqui, en el servidor. Un cupon que
+            // viene del navegador solo aporta el codigo; el importe lo decide el
+            // motor.
+            $discounts = $this->calculateDiscounts->handle(new DiscountContext(
+                lines: $cartItems->map(fn (array $item): CartLine => CartLine::forProduct(
+                    $products[$item['id']],
+                    $item['quantity'],
+                ))->all(),
+                couponCode: $validated['coupon_code'] ?? null,
+                email: $validated['customer_email'] ?? null,
+                paymentMethod: $validated['payment_method'],
+                isFirstPurchase: $this->isFirstPurchase($validated['customer_email'] ?? null),
+                isGuest: auth()->guest(),
+            ));
+
+            $discountCents = $discounts->subtotalDiscountCents();
+
             // El envio se calcula aqui, en el servidor. Lo que la tienda muestre
             // en el navegador es solo un adelanto para que el cliente vea el
             // total al instante; nunca es lo que se cobra.
             $quote = $this->calculateShipping->handle(
                 subtotalCents: $subtotalCents,
+                // El descuento entra en el calculo porque el umbral de envio
+                // gratis puede compararse contra el subtotal ya descontado.
+                discountCents: $discountCents,
                 state: $validated['shipping_state'],
                 postcode: $validated['shipping_postcode'],
             );
@@ -164,7 +193,9 @@ class CheckoutController extends Controller
                 ]);
             }
 
-            $shippingCents = $quote->costCents;
+            // Una promocion de envio gratis lo libera aunque no se alcance el
+            // umbral por monto.
+            $shippingCents = $discounts->grantsFreeShipping() ? 0 : $quote->costCents;
 
             $order = Order::create([
                 'code' => $this->makeOrderCode(),
@@ -172,8 +203,12 @@ class CheckoutController extends Controller
                 'payment_method' => $validated['payment_method'],
                 'payment_status' => 'pending',
                 'subtotal_cents' => $subtotalCents,
+                'discount_cents' => $discountCents,
+                // Fotografia inmutable: modificar la promocion despues no cambia
+                // lo que este cliente pago.
+                'discount_breakdown' => $discounts->toBreakdown(),
                 'shipping_cents' => $shippingCents,
-                'total_cents' => $subtotalCents + $shippingCents,
+                'total_cents' => max(0, $subtotalCents - $discountCents) + $shippingCents,
                 'customer_name' => $validated['customer_name'],
                 'customer_email' => $validated['customer_email'] ?? null,
                 'customer_phone' => $validated['customer_phone'],
@@ -206,8 +241,28 @@ class CheckoutController extends Controller
             // simultaneas no pueden vender la misma ultima pieza.
             $this->deductStock->handle($order->load('items.product'));
 
+            // Dentro de la transaccion: si el pedido se deshace, el cupon no debe
+            // quedar contado como consumido.
+            $this->recordPromotionUsage->handle($order, $discounts);
+
             return $order;
         });
+    }
+
+    /**
+     * Si es la primera compra de este correo.
+     *
+     * Se resuelve contra los pedidos anteriores porque la mayoria de los clientes
+     * de esta tienda compran sin cuenta, y sin esto un cupon de primera compra no
+     * se podria limitar.
+     */
+    private function isFirstPurchase(?string $email): bool
+    {
+        if ($email === null || $email === '') {
+            return false;
+        }
+
+        return ! Order::where('customer_email', mb_strtolower(trim($email)))->exists();
     }
 
     private function makeOrderCode(): string
