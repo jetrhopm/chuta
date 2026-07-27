@@ -7,6 +7,12 @@ para invitados.
 > Estado: en construccion. Consulta [Avance por etapas](#avance-por-etapas)
 > para saber que hay implementado hoy.
 
+## Puesta en produccion
+
+Para desplegar en Hostinger sigue [docs/despliegue-produccion.md](docs/despliegue-produccion.md),
+que cubre en orden la base de datos, el entorno, las migraciones, los medios, el
+cron de la cola, el correo, los pagos y la comprobacion final.
+
 ## Requisitos
 
 | Componente | Version usada | Nota |
