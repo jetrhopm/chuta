@@ -26,18 +26,11 @@
                 freeShippingThresholdCents: @js($shipping->freeShippingThresholdCents),
                 items: JSON.parse(localStorage.getItem('chutamax_cart') || '[]'),
                 checkoutOrderCode: @js(session('checkout_order_code')),
-                busqueda: '',
                 init() {
                     if (this.checkoutOrderCode) {
                         this.clearCart();
                     }
                 },
-                {{--
-                    Filtro rapido sobre lo que ya esta en la pagina. Sirve para
-                    encontrar algo entre los productos visibles sin esperar al
-                    servidor; la busqueda en todo el catalogo con indice de texto
-                    completo llega en la Etapa 6.
-                --}}
                 {{-- El alta real al boletin se conecta con el modulo de correos. --}}
                 avisoBoletin() {
                     window.Swal.fire({
@@ -46,23 +39,6 @@
                         icon: 'info',
                         confirmButtonText: 'Entendido',
                     });
-                },
-                filtrarCatalogo() {
-                    const termino = this.busqueda.trim().toLowerCase();
-
-                    document.querySelectorAll('[data-producto]').forEach((tarjeta) => {
-                        const coincide = termino === ''
-                            || tarjeta.dataset.producto.includes(termino);
-
-                        tarjeta.hidden = ! coincide;
-                    });
-
-                    const vacio = document.querySelector('[data-sin-resultados]');
-
-                    if (vacio) {
-                        const visibles = document.querySelectorAll('[data-producto]:not([hidden])').length;
-                        vacio.hidden = visibles > 0;
-                    }
                 },
                 addToCart(product) {
                     const item = this.items.find((cartItem) => cartItem.id === product.id);
@@ -171,18 +147,21 @@
                         </span>
                     </a>
 
+                    {{-- Busca en todo el catalogo, no solo en lo que se ve en
+                         pantalla: con casi mil productos, filtrar lo visible
+                         dejaria fuera casi todo. --}}
                     <form
                         role="search"
+                        method="GET"
+                        action="{{ route('catalog.index') }}"
                         class="order-3 w-full sm:order-none sm:ml-auto sm:w-auto sm:flex-1 sm:max-w-md"
-                        x-on:submit.prevent="filtrarCatalogo()"
                     >
                         <label class="sr-only" for="buscador">Buscar productos</label>
                         <div class="flex overflow-hidden rounded border-2 border-white/15 bg-white focus-within:border-[var(--color-brand)]">
                             <input
                                 id="buscador"
                                 type="search"
-                                x-model="busqueda"
-                                x-on:input.debounce.250ms="filtrarCatalogo()"
+                                name="q"
                                 placeholder="Busca proteina, creatina, marca..."
                                 class="w-full px-3 py-2 text-sm text-[var(--color-ink)] outline-none"
                             >
@@ -211,7 +190,8 @@
                 <nav aria-label="Secciones de la tienda" class="border-t border-white/10 bg-black">
                     <div class="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 py-2 sm:px-6 lg:px-8">
                         <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="{{ route('storefront.home') }}">Inicio</a>
-                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="#productos">Productos</a>
+                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="{{ route('catalog.index') }}">Catalogo</a>
+                        <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="{{ route('catalog.index', ['ofertas' => 1]) }}">Ofertas</a>
                         <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="#categorias">Categorias</a>
                         <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="#como-comprar">Como comprar</a>
                         <a class="display-title shrink-0 text-lg text-white transition hover:text-[var(--color-brand)]" href="{{ route('pages.shipping') }}">Envios</a>

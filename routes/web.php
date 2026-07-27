@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\CatalogController;
 use App\Http\Controllers\CheckoutController;
 use App\Http\Controllers\OrderTrackingController;
 use App\Http\Controllers\PaymentReceiptController;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', StorefrontController::class)->name('storefront.home');
 Route::post('/checkout', [CheckoutController::class, 'store'])->name('checkout.store');
 
+Route::get('/catalogo', CatalogController::class)->name('catalog.index');
 Route::get('/producto/{slug}', [ProductController::class, 'show'])->name('products.show');
 
 // Consulta de codigos postales del checkout. Lleva limite de peticiones porque
