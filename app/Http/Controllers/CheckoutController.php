@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Inventory\Actions\DeductStockForOrder;
 use App\Domain\Inventory\Exceptions\InsufficientStock;
+use App\Domain\Notifications\OrderNotifier;
 use App\Domain\Payments\Actions\StartPayment;
 use App\Domain\Payments\Enums\PaymentProvider;
 use App\Domain\Payments\PaymentGatewayRegistry;
@@ -25,6 +26,7 @@ class CheckoutController extends Controller
         private readonly CalculateShipping $calculateShipping,
         private readonly StartPayment $startPayment,
         private readonly PaymentGatewayRegistry $registry,
+        private readonly OrderNotifier $notifier,
     ) {}
 
     public function store(Request $request): RedirectResponse
@@ -96,6 +98,11 @@ class CheckoutController extends Controller
             $order,
             PaymentProvider::from($validated['payment_method']),
         );
+
+        // El aviso va despues de que el pedido ya esta guardado y en cola, no
+        // dentro de la transaccion: un servidor de correo lento no debe hacer
+        // esperar al cliente, y uno caido no debe costarle la compra.
+        $this->notifier->orderReceived($order, $attempt->getAttribute('instructions'));
 
         // Los proveedores redireccionados cobran en su propia pantalla.
         if ($attempt->checkout_url !== null) {

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Payments\Actions;
 
+use App\Domain\Notifications\OrderNotifier;
 use App\Domain\Payments\Data\PaymentStatusResult;
 use App\Domain\Payments\Enums\PaymentStatus;
 use App\Models\PaymentReceipt;
@@ -19,9 +20,23 @@ use Illuminate\Support\Facades\DB;
  */
 class ReviewPaymentReceipt
 {
-    public function __construct(private readonly SettlePayment $settlePayment) {}
+    public function __construct(
+        private readonly SettlePayment $settlePayment,
+        private readonly OrderNotifier $notifier,
+    ) {}
 
     public function accept(PaymentReceipt $receipt, User $reviewer, ?string $comment = null): PaymentReceipt
+    {
+        $receipt = $this->applyAcceptance($receipt, $reviewer, $comment);
+
+        // El aviso sale fuera de la transaccion: si el correo falla, la
+        // aprobacion del pago ya quedo guardada.
+        $this->notifier->receiptReviewed($receipt);
+
+        return $receipt;
+    }
+
+    private function applyAcceptance(PaymentReceipt $receipt, User $reviewer, ?string $comment): PaymentReceipt
     {
         return DB::transaction(function () use ($receipt, $reviewer, $comment): PaymentReceipt {
             $receipt->forceFill([
@@ -71,6 +86,10 @@ class ReviewPaymentReceipt
             'reviewed_at' => now(),
             'review_comment' => $comment,
         ])->save();
+
+        // El motivo viaja en el correo: sin el, el cliente no sabe que corregir y
+        // solo puede volver a subir lo mismo.
+        $this->notifier->receiptReviewed($receipt);
 
         return $receipt;
     }

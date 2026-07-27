@@ -4,6 +4,7 @@ namespace App\Domain\Payments\Actions;
 
 use App\Domain\Inventory\Actions\RestockOrder;
 use App\Domain\Inventory\Enums\InventoryMovementType;
+use App\Domain\Notifications\OrderNotifier;
 use App\Domain\Payments\Data\PaymentStatusResult;
 use App\Domain\Payments\Enums\PaymentStatus;
 use App\Models\PaymentAttempt;
@@ -20,9 +21,27 @@ use Illuminate\Support\Facades\Log;
  */
 class SettlePayment
 {
-    public function __construct(private readonly RestockOrder $restockOrder) {}
+    public function __construct(
+        private readonly RestockOrder $restockOrder,
+        private readonly OrderNotifier $notifier,
+    ) {}
 
     public function handle(PaymentAttempt $attempt, PaymentStatusResult $result): PaymentAttempt
+    {
+        $estadoAnterior = $attempt->status;
+
+        $attempt = $this->apply($attempt, $result);
+
+        // El aviso sale fuera de la transaccion y solo si el estado cambio de
+        // verdad: un webhook repetido no debe volver a escribirle al cliente.
+        if ($attempt->status !== $estadoAnterior && $attempt->order !== null) {
+            $this->notifier->paymentStatusChanged($attempt->order, $attempt->status);
+        }
+
+        return $attempt;
+    }
+
+    private function apply(PaymentAttempt $attempt, PaymentStatusResult $result): PaymentAttempt
     {
         return DB::transaction(function () use ($attempt, $result): PaymentAttempt {
             // Se relee con la fila bloqueada porque el mismo pago puede llegar por

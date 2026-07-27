@@ -283,6 +283,60 @@ Las pruebas no necesitan el catalogo nacional: usan
 `tests/Fixtures/sepomex-muestra.txt`, que reproduce el formato oficial con unas
 pocas filas, incluidas las que el importador debe descartar.
 
+## Correo
+
+El SMTP se captura en **Configuracion > Correo**. Una vez guardado, esa
+configuracion manda sobre la del archivo de entorno, que queda solo como respaldo
+de arranque. La contrasena se guarda cifrada y se muestra enmascarada; dejar el
+campo vacio conserva la que ya estaba, de modo que cambiar otro dato no destruye
+la credencial buena.
+
+El boton **Enviar correo de prueba** guarda primero lo que hay en pantalla y
+manda un mensaje sin pasar por la cola, porque una prueba tiene que decir ahora
+mismo si funciona. Si falla, muestra el mensaje que devolvio el servidor de
+correo: ahi ese detalle tecnico si es util, porque lo lee un administrador.
+
+Correos que la tienda envia hoy:
+
+| Momento | Destinatario |
+|---|---|
+| Pedido registrado, con instrucciones de pago y enlace de seguimiento | Cliente |
+| El pago llega a un estado final (aprobado, rechazado, cancelado, expirado, reembolsado) | Cliente |
+| Se acepta o se rechaza un comprobante de transferencia | Cliente |
+| Venta nueva | La direccion interna que se configure |
+
+Los estados intermedios no se avisan: recibir "procesando" no le dice nada util a
+nadie. Un webhook repetido tampoco genera otro correo, porque el aviso sale solo
+cuando el estado cambia de verdad.
+
+**Ninguna falla de correo puede costar una venta.** Todos los correos van en cola
+con tres reintentos y espera creciente, y el encolado va envuelto: si la cola es
+inaccesible se registra el problema y la compra sigue su curso. Hay una prueba que
+simula la cola caida y comprueba que el pedido se guarda igual.
+
+## Cola de trabajos
+
+Los correos no salen solos: hace falta que algo procese la cola. En local:
+
+```bash
+php artisan queue:work
+```
+
+En Hostinger, donde no se puede dar por hecho que exista un supervisor de
+procesos, se programa por cron con un proceso que termina cuando vacia la cola:
+
+```bash
+php /home/USUARIO/domains/DOMINIO/chuta/artisan queue:work --stop-when-empty --max-time=55
+```
+
+Ejecutandolo cada minuto, el correo sale con un retraso maximo de un minuto y
+ningun proceso queda colgado. Los trabajos que fallan quedan en la tabla
+`failed_jobs` y se pueden reintentar:
+
+```bash
+php artisan queue:retry all
+```
+
 ## Credenciales locales
 
 Las cuentas iniciales se crean con los seeders y son exclusivamente para el
@@ -324,7 +378,9 @@ entorno local. En produccion debe exigirse el cambio de contraseña.
       junto con los pagos.
 - [ ] Etapa 8 — Pedidos y cuentas de cliente.
 - [ ] Etapa 9 — Pagos.
-- [ ] Etapa 10 — SMTP y Meta Ads.
+- [~] Etapa 10 — SMTP administrable con correo de prueba y correos
+      transaccionales en cola (ver [Correo](#correo) y
+      [Cola de trabajos](#cola-de-trabajos)). Falta Meta Pixel y Conversions API.
 - [ ] Etapa 11 — Reportes, auditoria y API.
 - [ ] Etapa 12 — Pruebas y optimizacion.
 - [ ] Etapa 13 — Documentacion y despliegue en Hostinger.
