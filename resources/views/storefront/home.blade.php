@@ -7,6 +7,9 @@
 
         <title>Chutamax | Suplementos deportivos</title>
 
+        <x-analytics.meta-pixel />
+        @stack('head')
+
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=instrument-sans:400,500,600,700,800" rel="stylesheet">
 
@@ -50,6 +53,13 @@
                     }
 
                     this.persist();
+                    window.chutamaxMetaTrack('AddToCart', {
+                        content_ids: [String(product.id)],
+                        content_name: product.name,
+                        content_type: 'product',
+                        value: product.price_cents / 100,
+                        currency: 'MXN',
+                    });
                     this.cartOpen = true;
                 },
                 increment(id) {
@@ -107,6 +117,14 @@
                     if (this.items.length === 0) {
                         return;
                     }
+
+                    window.chutamaxMetaTrack('InitiateCheckout', {
+                        content_ids: this.items.map((item) => String(item.id)),
+                        contents: this.items.map((item) => ({ id: String(item.id), quantity: item.quantity })),
+                        num_items: this.count,
+                        value: this.totalCents / 100,
+                        currency: 'MXN',
+                    });
 
                     this.cartPayload = JSON.stringify(this.items.map((item) => ({
                         id: item.id,

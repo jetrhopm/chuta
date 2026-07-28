@@ -8,6 +8,7 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>{{ $title ?? 'Chutamax' }}</title>
+        <x-analytics.meta-pixel />
         {{-- Cada pagina agrega aqui sus datos para buscadores y para compartir. --}}
         @stack('head')
         @vite(['resources/css/app.css', 'resources/js/app.js'])

@@ -1,4 +1,21 @@
 <x-storefront.layouts.simple :title="'Pedido '.$order->code">
+    @if ($order->payment_status === \App\Domain\Payments\Enums\PaymentStatus::Approved)
+        @push('head')
+            <script>
+                window.chutamaxMetaTrack('Purchase', {
+                    content_ids: @js($order->items->map(fn ($item) => (string) ($item->product_id ?? $item->sku))->values()->all()),
+                    contents: @js($order->items->map(fn ($item) => [
+                        'id' => (string) ($item->product_id ?? $item->sku),
+                        'quantity' => $item->quantity,
+                    ])->values()->all()),
+                    value: @js($order->total_cents / 100),
+                    currency: 'MXN',
+                    order_id: @js($order->code),
+                });
+            </script>
+        @endpush
+    @endif
+
     <div class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
         @if (session('receipt_uploaded'))
             <p class="mb-6 border-l-4 border-[var(--color-success)] bg-[var(--color-surface-muted)] p-4 text-sm">

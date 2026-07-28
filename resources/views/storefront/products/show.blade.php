@@ -16,6 +16,15 @@
         @if ($product->image_url)
             <meta property="og:image" content="{{ $product->image_url }}">
         @endif
+        <script>
+            window.chutamaxMetaTrack('ViewContent', {
+                content_ids: [@js((string) $product->id)],
+                content_name: @js($product->name),
+                content_type: 'product',
+                value: @js($product->price_cents / 100),
+                currency: 'MXN',
+            });
+        </script>
     @endpush
 
     <div
@@ -44,6 +53,14 @@
                 }
 
                 localStorage.setItem('chutamax_cart', JSON.stringify(carrito));
+
+                window.chutamaxMetaTrack('AddToCart', {
+                    content_ids: [String(producto.id)],
+                    content_name: producto.name,
+                    content_type: 'product',
+                    value: producto.price_cents / 100,
+                    currency: 'MXN',
+                });
 
                 window.Swal.fire({
                     title: 'Agregado al carrito',
