@@ -13,6 +13,9 @@ Para desplegar en Hostinger sigue [docs/despliegue-produccion.md](docs/despliegu
 que cubre en orden la base de datos, el entorno, las migraciones, los medios, el
 cron de la cola, el correo, los pagos y la comprobacion final.
 
+Si necesitas una guia paso a paso para una persona sin experiencia tecnica,
+consulta [docs/manual-instalacion-despliegue-operacion.md](docs/manual-instalacion-despliegue-operacion.md).
+
 ## Requisitos
 
 | Componente | Version usada | Nota |
