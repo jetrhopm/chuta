@@ -10,7 +10,7 @@ class ProductController extends Controller
     public function show(string $slug): View
     {
         $product = Product::query()
-            ->with(['brand', 'category'])
+            ->with(['brand', 'category', 'images', 'tags', 'variants' => fn ($query) => $query->where('is_active', true)])
             ->active()
             ->where('slug', $slug)
             ->firstOrFail();
@@ -19,7 +19,7 @@ class ProductController extends Controller
         // prefieren los que estan disponibles: recomendar algo agotado no ayuda a
         // vender.
         $related = Product::query()
-            ->with(['brand', 'category'])
+            ->with(['brand', 'category', 'images'])
             ->active()
             ->where('category_id', $product->category_id)
             ->whereKeyNot($product->getKey())

@@ -5,6 +5,7 @@ use App\Domain\Catalog\Data\CatalogFilters;
 use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductTag;
 
 function buscar(array $query = [])
 {
@@ -44,6 +45,16 @@ it('encuentra por SKU', function () {
     Product::factory()->create(['name' => 'Producto dos', 'sku' => 'CHUTAMAX-9999']);
 
     expect(nombresDe(buscar(['q' => 'CHUTAMAX-3044'])))->toBe(['Producto uno']);
+});
+
+it('encuentra por etiqueta', function () {
+    $product = Product::factory()->create(['name' => 'Proteina neutra']);
+    $tag = ProductTag::create(['name' => 'Sin lactosa', 'slug' => 'sin-lactosa']);
+    $product->tags()->attach($tag);
+
+    Product::factory()->create(['name' => 'Proteina normal']);
+
+    expect(nombresDe(buscar(['q' => 'lactosa'])))->toBe(['Proteina neutra']);
 });
 
 it('ignora un termino de una sola letra', function () {

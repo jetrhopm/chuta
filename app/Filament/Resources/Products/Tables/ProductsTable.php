@@ -42,6 +42,11 @@ class ProductsTable
                 TextColumn::make('sku')
                     ->label('SKU')
                     ->searchable(),
+                TextColumn::make('tags.name')
+                    ->label('Etiquetas')
+                    ->badge()
+                    ->separator(',')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('price_cents')
                     ->label('Precio')
                     ->money('MXN', divideBy: 100, locale: 'es_MX')

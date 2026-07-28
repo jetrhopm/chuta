@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Customers\Actions\AttachOrderToCustomer;
 use App\Domain\Inventory\Actions\DeductStockForOrder;
 use App\Domain\Inventory\Exceptions\InsufficientStock;
 use App\Domain\Notifications\OrderNotifier;
@@ -33,6 +34,7 @@ class CheckoutController extends Controller
         private readonly OrderNotifier $notifier,
         private readonly CalculateDiscounts $calculateDiscounts,
         private readonly RecordPromotionUsage $recordPromotionUsage,
+        private readonly AttachOrderToCustomer $attachOrderToCustomer,
     ) {}
 
     public function store(Request $request): RedirectResponse
@@ -91,6 +93,7 @@ class CheckoutController extends Controller
 
         try {
             $order = $this->createOrder($validated, $cartItems, $products);
+            $this->attachOrderToCustomer->handle($order);
         } catch (InsufficientStock $exception) {
             // El pedido ya se deshizo con la transaccion. Solo queda contarlo en
             // terminos que el cliente entienda, sin tecnicismos.

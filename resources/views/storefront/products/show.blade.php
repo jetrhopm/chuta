@@ -1,10 +1,17 @@
-<x-storefront.layouts.simple :title="$product->name.' | Chutamax'">
+@php
+    $seoTitle = $product->seo_title ?: $product->name;
+    $seoDescription = $product->seo_description ?: Str::limit(strip_tags((string) ($product->short_description ?? $product->description)), 155);
+    $gallery = $product->images->isNotEmpty() ? $product->images : collect();
+@endphp
+
+<x-storefront.layouts.simple :title="$seoTitle.' | Chutamax'">
     {{-- Datos para buscadores y para compartir en redes. --}}
     @push('head')
-        <meta name="description" content="{{ Str::limit(strip_tags((string) ($product->short_description ?? $product->description)), 155) }}">
+        <meta name="description" content="{{ $seoDescription }}">
         <link rel="canonical" href="{{ route('products.show', ['slug' => $product->slug]) }}">
         <meta property="og:type" content="product">
-        <meta property="og:title" content="{{ $product->name }}">
+        <meta property="og:title" content="{{ $seoTitle }}">
+        <meta property="og:description" content="{{ $seoDescription }}">
         <meta property="og:url" content="{{ route('products.show', ['slug' => $product->slug]) }}">
         @if ($product->image_url)
             <meta property="og:image" content="{{ $product->image_url }}">
@@ -74,6 +81,20 @@
                         <span class="display-title text-2xl text-[var(--color-ink-soft)]">{{ $product->category?->name }}</span>
                     </div>
                 @endif
+
+                @if ($gallery->count() > 1)
+                    <div class="mt-4 grid grid-cols-4 gap-2">
+                        @foreach ($gallery as $image)
+                            <img
+                                src="{{ $image->url }}"
+                                alt="{{ $image->alt ?: $product->name }}"
+                                width="120"
+                                height="120"
+                                class="aspect-square border border-[var(--color-border)] object-contain p-1"
+                            >
+                        @endforeach
+                    </div>
+                @endif
             </div>
 
             <div>
@@ -108,6 +129,33 @@
 
                 @if ($product->short_description)
                     <p class="mt-4 leading-7 text-[var(--color-ink-soft)]">{{ $product->short_description }}</p>
+                @endif
+
+                @if ($product->tags->isNotEmpty())
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        @foreach ($product->tags as $tag)
+                            <span class="border border-[var(--color-border)] px-2 py-1 text-xs font-bold uppercase text-[var(--color-ink-soft)]">
+                                {{ $tag->name }}
+                            </span>
+                        @endforeach
+                    </div>
+                @endif
+
+                @if ($product->variants->isNotEmpty())
+                    <div class="mt-6 border border-[var(--color-border)] p-4">
+                        <p class="text-sm font-black uppercase text-black">Presentaciones disponibles</p>
+                        <div class="mt-3 grid gap-2">
+                            @foreach ($product->variants as $variant)
+                                <div class="flex items-center justify-between gap-4 border border-[var(--color-border)] px-3 py-2 text-sm">
+                                    <div>
+                                        <p class="font-bold">{{ $variant->name }}</p>
+                                        <p class="text-xs text-[var(--color-ink-soft)]">SKU {{ $variant->sku }}</p>
+                                    </div>
+                                    <p class="display-title text-lg text-black">{{ $variant->price }}</p>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
                 @endif
 
                 @if ($product->is_in_stock)

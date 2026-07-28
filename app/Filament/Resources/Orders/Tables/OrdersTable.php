@@ -50,6 +50,10 @@ class OrdersTable
                 TextColumn::make('customer_name')
                     ->label('Cliente')
                     ->searchable(),
+                TextColumn::make('customer.orders_count')
+                    ->label('Compras cliente')
+                    ->numeric()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('customer_email')
                     ->label('Correo')
                     ->searchable(),

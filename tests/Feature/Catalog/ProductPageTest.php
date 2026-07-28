@@ -2,6 +2,9 @@
 
 use App\Models\Category;
 use App\Models\Product;
+use App\Models\ProductImage;
+use App\Models\ProductTag;
+use App\Models\ProductVariant;
 
 it('muestra la pagina de un producto', function () {
     $product = Product::factory()->withStock(10)->create([
@@ -62,13 +65,56 @@ it('muestra el precio anterior cuando hay oferta', function () {
 });
 
 it('incluye los datos para buscadores y para compartir', function () {
-    $product = Product::factory()->withStock(5)->create(['name' => 'Creatina Monohidratada']);
+    $product = Product::factory()->withStock(5)->create([
+        'name' => 'Creatina Monohidratada',
+        'seo_title' => 'Creatina para fuerza',
+        'seo_description' => 'Creatina micronizada para entrenamientos intensos.',
+    ]);
 
     $this->get(route('products.show', ['slug' => $product->slug]))
         ->assertOk()
+        ->assertSee('Creatina para fuerza | Chutamax')
+        ->assertSee('Creatina micronizada para entrenamientos intensos.')
         ->assertSee('og:title', escape: false)
         ->assertSee('rel="canonical"', escape: false)
         ->assertSee(route('products.show', ['slug' => $product->slug]));
+});
+
+it('muestra galeria etiquetas y variantes cuando existen', function () {
+    $product = Product::factory()->withStock(5)->create();
+    $tag = ProductTag::create(['name' => 'Vegano', 'slug' => 'vegano']);
+    $product->tags()->attach($tag);
+
+    ProductImage::create([
+        'product_id' => $product->id,
+        'path' => 'products/frente.jpg',
+        'alt' => 'Vista frontal',
+        'is_primary' => true,
+    ]);
+
+    ProductImage::create([
+        'product_id' => $product->id,
+        'path' => 'products/lado.jpg',
+        'alt' => 'Vista lateral',
+        'sort_order' => 2,
+    ]);
+
+    ProductVariant::create([
+        'product_id' => $product->id,
+        'name' => 'Chocolate 5 lb',
+        'sku' => 'VAR-CHOC-5',
+        'price_cents' => 139900,
+        'stock' => 4,
+    ]);
+
+    $this->get(route('products.show', ['slug' => $product->slug]))
+        ->assertOk()
+        ->assertSee('Vista frontal')
+        ->assertSee('Vista lateral')
+        ->assertSee('Vegano')
+        ->assertSee('Chocolate 5 lb')
+        ->assertSee('VAR-CHOC-5')
+        ->assertSee('$1,399.00');
 });
 
 it('recomienda productos de la misma categoria', function () {

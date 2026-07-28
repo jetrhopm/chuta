@@ -60,7 +60,8 @@ class SearchProducts
                 // Respaldo dentro de la misma consulta: el indice ignora palabras
                 // de menos de cuatro letras y terminos parciales, y sin esto
                 // buscar "whey" o "prote" no devolveria nada.
-                ->orWhere('name', 'like', '%'.$term.'%');
+                ->orWhere('name', 'like', '%'.$term.'%')
+                ->orWhereHas('tags', fn (Builder $tags): Builder => $tags->where('name', 'like', '%'.$term.'%'));
         });
     }
 
@@ -72,7 +73,8 @@ class SearchProducts
         $query->where(function (Builder $inner) use ($term): void {
             $inner->where('name', 'like', '%'.$term.'%')
                 ->orWhere('sku', 'like', $term.'%')
-                ->orWhere('short_description', 'like', '%'.$term.'%');
+                ->orWhere('short_description', 'like', '%'.$term.'%')
+                ->orWhereHas('tags', fn (Builder $tags): Builder => $tags->where('name', 'like', '%'.$term.'%'));
         });
     }
 

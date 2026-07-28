@@ -6,6 +6,7 @@ use App\Domain\Payments\Enums\PaymentStatus;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\URL;
 use RuntimeException;
@@ -15,6 +16,7 @@ class Order extends Model
     use HasFactory;
 
     protected $fillable = [
+        'customer_id',
         'code',
         'status',
         'payment_method',
@@ -70,6 +72,11 @@ class Order extends Model
     public function items(): HasMany
     {
         return $this->hasMany(OrderItem::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function inventoryMovements(): HasMany

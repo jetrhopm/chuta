@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Products\Schemas;
 
+use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -46,6 +48,23 @@ class ProductForm
                         Textarea::make('description')
                             ->label('Descripcion')
                             ->rows(5)
+                            ->columnSpanFull(),
+                        Select::make('tags')
+                            ->label('Etiquetas')
+                            ->relationship('tags', 'name')
+                            ->multiple()
+                            ->searchable()
+                            ->preload()
+                            ->createOptionForm([
+                                TextInput::make('name')
+                                    ->label('Nombre')
+                                    ->required()
+                                    ->maxLength(120),
+                                TextInput::make('slug')
+                                    ->required()
+                                    ->maxLength(140)
+                                    ->unique('product_tags', 'slug'),
+                            ])
                             ->columnSpanFull(),
                     ])
                     ->columns(2),
@@ -95,9 +114,105 @@ class ProductForm
                             ->required(),
                         Textarea::make('image_path')
                             ->label('URL o ruta de imagen')
+                            ->helperText('Respaldo para productos sin galeria. Para nuevas fotos usa la seccion Galeria.')
                             ->columnSpanFull(),
                     ])
                     ->columns(3),
+                Section::make('Galeria')
+                    ->schema([
+                        Repeater::make('images')
+                            ->label('Imagenes del producto')
+                            ->relationship()
+                            ->schema([
+                                FileUpload::make('path')
+                                    ->label('Imagen')
+                                    ->directory('products')
+                                    ->image()
+                                    ->required(),
+                                TextInput::make('alt')
+                                    ->label('Texto alternativo')
+                                    ->maxLength(160),
+                                TextInput::make('sort_order')
+                                    ->label('Orden')
+                                    ->integer()
+                                    ->minValue(0)
+                                    ->default(0),
+                                Toggle::make('is_primary')
+                                    ->label('Principal'),
+                            ])
+                            ->columns(2)
+                            ->defaultItems(0)
+                            ->reorderable()
+                            ->collapsible()
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('Variantes')
+                    ->description('Sirven para presentar tamanos, sabores o formatos. El checkout actual sigue vendiendo el producto base; la seleccion de variante queda para la siguiente etapa de carrito.')
+                    ->schema([
+                        Repeater::make('variants')
+                            ->label('Variantes')
+                            ->relationship()
+                            ->schema([
+                                TextInput::make('name')
+                                    ->label('Nombre')
+                                    ->required()
+                                    ->maxLength(160),
+                                TextInput::make('sku')
+                                    ->label('SKU')
+                                    ->required()
+                                    ->maxLength(160)
+                                    ->unique('product_variants', 'sku', ignoreRecord: true),
+                                TextInput::make('price_cents')
+                                    ->label('Precio')
+                                    ->helperText('En centavos.')
+                                    ->required()
+                                    ->integer()
+                                    ->minValue(0),
+                                TextInput::make('compare_at_price_cents')
+                                    ->label('Precio anterior')
+                                    ->integer()
+                                    ->minValue(0),
+                                FileUpload::make('image_path')
+                                    ->label('Imagen')
+                                    ->directory('products')
+                                    ->image(),
+                                TextInput::make('stock')
+                                    ->label('Existencias')
+                                    ->integer()
+                                    ->minValue(0)
+                                    ->default(0),
+                                Toggle::make('track_inventory')
+                                    ->label('Llevar inventario')
+                                    ->default(true),
+                                Toggle::make('is_active')
+                                    ->label('Activa')
+                                    ->default(true),
+                                TextInput::make('sort_order')
+                                    ->label('Orden')
+                                    ->integer()
+                                    ->minValue(0)
+                                    ->default(0),
+                            ])
+                            ->columns(3)
+                            ->defaultItems(0)
+                            ->reorderable()
+                            ->collapsible()
+                            ->columnSpanFull(),
+                    ]),
+                Section::make('SEO')
+                    ->schema([
+                        TextInput::make('seo_title')
+                            ->label('Titulo SEO')
+                            ->helperText('Si se deja vacio se usa el nombre del producto.')
+                            ->maxLength(70),
+                        Textarea::make('seo_description')
+                            ->label('Descripcion SEO')
+                            ->helperText('Si se deja vacia se usa la descripcion corta.')
+                            ->rows(3)
+                            ->maxLength(180)
+                            ->columnSpanFull(),
+                    ])
+                    ->columns(2),
             ]);
     }
 }

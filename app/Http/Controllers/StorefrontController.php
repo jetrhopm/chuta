@@ -44,6 +44,9 @@ class StorefrontController extends Controller
             'products' => $products,
             'categoryShortcuts' => $this->categoryShortcuts(),
             'banners' => collect($this->content->displayBanners()),
+            'theme' => $this->content->theme(),
+            'contentBlocks' => collect($this->content->contentBlocks()),
+            'blogPosts' => collect($this->content->blogPosts()),
             'howToBuy' => collect(config('storefront.how_to_buy', [])),
             // La tienda muestra estos valores como adelanto del total. El costo
             // que se cobra lo recalcula el servidor al confirmar el pedido.

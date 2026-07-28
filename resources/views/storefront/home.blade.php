@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}" data-theme="{{ $theme ?? 'performance' }}">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -236,6 +236,26 @@
                     </section>
                 @endif
 
+                @if ($contentBlocks->isNotEmpty())
+                    <section class="bg-white">
+                        <div class="mx-auto grid max-w-7xl gap-4 px-4 py-8 sm:px-6 md:grid-cols-3 lg:px-8">
+                            @foreach ($contentBlocks as $block)
+                                @php
+                                    $classes = match ($block['style'] ?? 'dark') {
+                                        'brand' => 'bg-[var(--color-brand)] text-white',
+                                        'light' => 'bg-[var(--color-surface-muted)] text-black',
+                                        default => 'bg-black text-white',
+                                    };
+                                @endphp
+                                <a href="{{ $block['url'] ?? '#productos' }}" class="{{ $classes }} block p-6 transition hover:-translate-y-1 hover:shadow-lg">
+                                    <h2 class="display-title text-3xl">{{ $block['title'] }}</h2>
+                                    <p class="mt-3 text-sm leading-6 opacity-80">{{ $block['text'] }}</p>
+                                </a>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+
                 {{-- Accesos rapidos por categoria --}}
                 @if ($categoryShortcuts->isNotEmpty())
                     <section id="categorias" class="bg-[var(--color-surface-muted)]">
@@ -320,6 +340,31 @@
                         @endif
                     </div>
                 </section>
+
+                @if ($blogPosts->isNotEmpty())
+                    <section class="bg-white">
+                        <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+                            <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+                                <h2 class="impact-title text-3xl uppercase text-black sm:text-4xl">Guias y novedades</h2>
+                                <p class="text-sm text-[var(--color-ink-soft)]">Contenido para elegir mejor tus suplementos.</p>
+                            </div>
+                            <div class="mt-8 grid gap-4 md:grid-cols-3">
+                                @foreach ($blogPosts as $post)
+                                    <article class="border border-[var(--color-border)] p-5 transition hover:-translate-y-1 hover:shadow-lg">
+                                        @if (! empty($post['published_at']))
+                                            <p class="text-xs font-bold uppercase text-[var(--color-brand)]">{{ $post['published_at'] }}</p>
+                                        @endif
+                                        <h3 class="display-title mt-2 text-2xl text-black">{{ $post['title'] }}</h3>
+                                        <p class="mt-3 text-sm leading-6 text-[var(--color-ink-soft)]">{{ $post['excerpt'] }}</p>
+                                        <a href="{{ $post['url'] }}" class="display-title mt-5 inline-block text-lg text-[var(--color-brand)]">
+                                            Leer mas
+                                        </a>
+                                    </article>
+                                @endforeach
+                            </div>
+                        </div>
+                    </section>
+                @endif
 
                 {{-- Como comprar --}}
                 <section id="como-comprar" class="bg-[var(--color-surface-muted)]">

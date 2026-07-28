@@ -19,6 +19,13 @@ class StorefrontContentRepository
 {
     public const GROUP = 'storefront';
 
+    public const THEMES = [
+        'performance' => 'Performance',
+        'electric' => 'Electric',
+        'premium' => 'Premium',
+        'fresh' => 'Fresh',
+    ];
+
     public function __construct(private readonly SettingsRepository $settings) {}
 
     /**
@@ -62,11 +69,75 @@ class StorefrontContentRepository
     }
 
     /**
+     * @return array<int, array{title: string, text: string, url: string, style: string, sort_order: int}>
+     */
+    public function contentBlocks(): array
+    {
+        $blocks = $this->settings->get(self::GROUP, 'content_blocks');
+
+        if (! is_array($blocks)) {
+            return [];
+        }
+
+        return collect($blocks)
+            ->filter(fn ($block): bool => is_array($block) && filled($block['title'] ?? null))
+            ->sortBy(fn (array $block): int => (int) ($block['sort_order'] ?? 0))
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return array<int, array{title: string, excerpt: string, url: string, published_at: string}>
+     */
+    public function blogPosts(): array
+    {
+        $posts = $this->settings->get(self::GROUP, 'blog_posts');
+
+        if (! is_array($posts)) {
+            return [];
+        }
+
+        return collect($posts)
+            ->filter(fn ($post): bool => is_array($post) && filled($post['title'] ?? null))
+            ->sortByDesc(fn (array $post): string => (string) ($post['published_at'] ?? ''))
+            ->values()
+            ->all();
+    }
+
+    public function theme(): string
+    {
+        $theme = $this->settings->get(self::GROUP, 'theme', 'performance');
+
+        return array_key_exists($theme, self::THEMES) ? $theme : 'performance';
+    }
+
+    /**
      * @param  array<int, array{image: string, alt: string, url: string}>  $banners
      */
     public function saveBanners(array $banners): void
     {
         $this->settings->set(self::GROUP, 'banners', array_values($banners));
+    }
+
+    public function saveTheme(string $theme): void
+    {
+        $this->settings->set(self::GROUP, 'theme', array_key_exists($theme, self::THEMES) ? $theme : 'performance');
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $blocks
+     */
+    public function saveContentBlocks(array $blocks): void
+    {
+        $this->settings->set(self::GROUP, 'content_blocks', array_values($blocks));
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $posts
+     */
+    public function saveBlogPosts(array $posts): void
+    {
+        $this->settings->set(self::GROUP, 'blog_posts', array_values($posts));
     }
 
     /**
@@ -76,6 +147,9 @@ class StorefrontContentRepository
     {
         $this->settings->seedMissing(self::GROUP, [
             'banners' => array_values(config('storefront.banners', [])),
+            'theme' => 'performance',
+            'content_blocks' => [],
+            'blog_posts' => [],
         ]);
     }
 }
